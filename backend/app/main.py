@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from sqlalchemy import text
+from app.routers import admin
 
 from app.db.database import engine
 
@@ -8,6 +9,12 @@ app = FastAPI(
     title="Aptitude Platform API",
     description="Backend API for Aptitude and DSA preparation platform",
     version="1.0.0",
+)
+
+app.include_router(
+    admin.router,
+    prefix="/admin",
+    tags=["Admin"],
 )
 
 
