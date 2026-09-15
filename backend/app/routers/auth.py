@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-
+from app.core.config import settings
 from app.db.database import get_db
 from app.db.models.user import User
 from app.schemas.auth import (
@@ -10,8 +10,12 @@ from app.schemas.auth import (
     TokenResponse,
     UserResponse,
 )
+from datetime import datetime, timedelta, timezone
+
+from app.core.redis import revoke_session, store_session
 from app.core.security import (
     create_access_token,
+    generate_session_token,
     hash_password,
     verify_password,
 )
@@ -90,10 +94,25 @@ async def login(
             detail="User account is inactive",
         )
 
+    # Generate a new session token
+    session_token = generate_session_token()
+
+    # Remove previous Redis session
+    await revoke_session(user.id)
+
+    # Store the new session in Redis
+    await store_session(
+        user.id,
+        session_token,
+        settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+    )
+
+    # Create JWT
     access_token = create_access_token(
         {
             "sub": str(user.id),
             "role": user.role,
+            "session": session_token,
         }
     )
 
@@ -101,4 +120,3 @@ async def login(
         access_token=access_token,
         token_type="bearer",
     )
-

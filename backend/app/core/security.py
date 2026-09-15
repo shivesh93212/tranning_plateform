@@ -5,6 +5,8 @@ from jose import JWTError, jwt
 
 from app.core.config import settings
 
+import secrets
+
 pwd_context = CryptContext(
     schemes=["bcrypt"],
     deprecated="auto",
@@ -52,3 +54,6 @@ def decode_access_token(token: str) -> dict | None:
 
     except JWTError:
         return None
+
+def generate_session_token() -> str:
+    return secrets.token_urlsafe(64)
