@@ -13,6 +13,26 @@ from app.schemas.topic import (
 )
 from app.services.admin_service import require_admin
 
+from app.db.models.company import Company
+
+from app.schemas.company import (
+    CompanyCreate,
+    CompanyUpdate,
+    CompanyResponse,
+)
+
+from app.db.models.question import Question
+from app.db.models.question_option import QuestionOption
+from app.db.models.topic import Topic
+from app.db.models.subtopic import Subtopic
+
+from app.schemas.question import (
+    QuestionCreate,
+    QuestionUpdate,
+    QuestionResponse,
+)
+
+
 
 router = APIRouter()
 
@@ -500,3 +520,736 @@ async def delete_subtopic(
         "message": "Subtopic deactivated successfully"
     }
 
+# =========================
+# CREATE COMPANY
+# =========================
+
+@router.post(
+    "/companies",
+    response_model=CompanyResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_company(
+    data: CompanyCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    require_admin(current_user)
+
+    # Check duplicate name
+    result = await db.execute(
+        select(Company).where(
+            Company.name == data.name
+        )
+    )
+
+    existing_company = result.scalar_one_or_none()
+
+    if existing_company:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Company with this name already exists",
+        )
+
+    # Check duplicate slug
+    result = await db.execute(
+        select(Company).where(
+            Company.slug == data.slug
+        )
+    )
+
+    existing_slug = result.scalar_one_or_none()
+
+    if existing_slug:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Company with this slug already exists",
+        )
+
+    company = Company(
+        name=data.name,
+        slug=data.slug,
+        description=data.description,
+        is_active=True,
+    )
+
+    db.add(company)
+
+    await db.commit()
+    await db.refresh(company)
+
+    return company
+
+# =========================
+# GET ALL COMPANIES
+# =========================
+
+@router.get(
+    "/companies",
+    response_model=list[CompanyResponse],
+)
+async def get_companies(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    require_admin(current_user)
+
+    result = await db.execute(
+        select(Company).order_by(
+            Company.id.desc()
+        )
+    )
+
+    companies = result.scalars().all()
+
+    return companies
+
+# =========================
+# GET SINGLE COMPANY
+# =========================
+
+@router.get(
+    "/companies/{company_id}",
+    response_model=CompanyResponse,
+)
+async def get_company(
+    company_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    require_admin(current_user)
+
+    result = await db.execute(
+        select(Company).where(
+            Company.id == company_id
+        )
+    )
+
+    company = result.scalar_one_or_none()
+
+    if not company:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Company not found",
+        )
+
+    return company
+
+# =========================
+# UPDATE COMPANY
+# =========================
+
+@router.patch(
+    "/companies/{company_id}",
+    response_model=CompanyResponse,
+)
+async def update_company(
+    company_id: int,
+    data: CompanyUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    require_admin(current_user)
+
+    result = await db.execute(
+        select(Company).where(
+            Company.id == company_id
+        )
+    )
+
+    company = result.scalar_one_or_none()
+
+    if not company:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Company not found",
+        )
+
+    # Update name
+    if data.name is not None and data.name != company.name:
+
+        result = await db.execute(
+            select(Company).where(
+                Company.name == data.name,
+                Company.id != company_id,
+            )
+        )
+
+        existing_company = result.scalar_one_or_none()
+
+        if existing_company:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Company with this name already exists",
+            )
+
+        company.name = data.name
+
+    # Update slug
+    if data.slug is not None and data.slug != company.slug:
+
+        result = await db.execute(
+            select(Company).where(
+                Company.slug == data.slug,
+                Company.id != company_id,
+            )
+        )
+
+        existing_slug = result.scalar_one_or_none()
+
+        if existing_slug:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Company with this slug already exists",
+            )
+
+        company.slug = data.slug
+
+    # Update description
+    if data.description is not None:
+        company.description = data.description
+
+    # Activate / deactivate
+    if data.is_active is not None:
+        company.is_active = data.is_active
+
+    await db.commit()
+    await db.refresh(company)
+
+    return company
+
+# =========================
+# DEACTIVATE COMPANY
+# =========================
+
+@router.delete(
+    "/companies/{company_id}",
+)
+async def delete_company(
+    company_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    require_admin(current_user)
+
+    result = await db.execute(
+        select(Company).where(
+            Company.id == company_id
+        )
+    )
+
+    company = result.scalar_one_or_none()
+
+    if not company:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Company not found",
+        )
+
+    company.is_active = False
+
+    await db.commit()
+
+    return {
+        "message": "Company deactivated successfully"
+    }
+
+# =========================
+# CREATE QUESTION
+# =========================
+
+@router.post(
+    "/questions",
+    response_model=QuestionResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_question(
+    data: QuestionCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    require_admin(current_user)
+
+    # -------------------------
+    # Check Topic
+    # -------------------------
+
+    result = await db.execute(
+        select(Topic).where(
+            Topic.id == data.topic_id,
+            Topic.is_active == True,
+        )
+    )
+
+    topic = result.scalar_one_or_none()
+
+    if not topic:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Topic not found or inactive",
+        )
+
+    # -------------------------
+    # Check Subtopic
+    # -------------------------
+
+    result = await db.execute(
+        select(Subtopic).where(
+            Subtopic.id == data.subtopic_id,
+            Subtopic.is_active == True,
+        )
+    )
+
+    subtopic = result.scalar_one_or_none()
+
+    if not subtopic:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Subtopic not found or inactive",
+        )
+
+    # -------------------------
+    # Check Subtopic belongs
+    # to selected Topic
+    # -------------------------
+
+    if subtopic.topic_id != data.topic_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Subtopic does not belong to the selected topic",
+        )
+
+    # -------------------------
+    # Validate Options
+    # -------------------------
+
+    if len(data.options) < 2:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="At least 2 options are required",
+        )
+
+    # Check duplicate labels
+    labels = [
+        option.option_label.upper()
+        for option in data.options
+    ]
+
+    if len(labels) != len(set(labels)):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Duplicate option labels are not allowed",
+        )
+
+    # Check exactly one correct answer
+    correct_options = [
+        option
+        for option in data.options
+        if option.is_correct
+    ]
+
+    if len(correct_options) != 1:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Exactly one correct option is required",
+        )
+
+    # -------------------------
+    # Create Question
+    # -------------------------
+
+    question = Question(
+        topic_id=data.topic_id,
+        subtopic_id=data.subtopic_id,
+        question_text=data.question_text,
+        difficulty=data.difficulty,
+        question_type=data.question_type,
+        source_type=data.source_type,
+        company_year=data.company_year,
+        explanation=data.explanation,
+        shortcut=data.shortcut,
+        solution_steps=data.solution_steps,
+        is_active=True,
+    )
+
+    db.add(question)
+
+    await db.flush()
+
+    # -------------------------
+    # Create Options
+    # -------------------------
+
+    for option_data in data.options:
+
+        option = QuestionOption(
+            question_id=question.id,
+            option_text=option_data.option_text,
+            option_label=option_data.option_label.upper(),
+            is_correct=option_data.is_correct,
+        )
+
+        db.add(option)
+
+    await db.commit()
+
+    await db.refresh(question)
+
+    return question
+
+
+# =========================
+# GET ALL QUESTIONS
+# =========================
+
+@router.get(
+    "/questions",
+    response_model=list[QuestionResponse],
+)
+async def get_questions(
+    topic_id: int | None = None,
+    subtopic_id: int | None = None,
+    difficulty: int | None = None,
+    question_type: str | None = None,
+    source_type: str | None = None,
+    company_year: int | None = None,
+    is_active: bool | None = True,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    require_admin(current_user)
+
+    query = (
+        select(Question)
+        .options(
+            selectinload(Question.options)
+        )
+    )
+
+    # Topic filter
+    if topic_id is not None:
+        query = query.where(
+            Question.topic_id == topic_id
+        )
+
+    # Subtopic filter
+    if subtopic_id is not None:
+        query = query.where(
+            Question.subtopic_id == subtopic_id
+        )
+
+    # Difficulty filter
+    if difficulty is not None:
+        query = query.where(
+            Question.difficulty == difficulty
+        )
+
+    # Question type filter
+    if question_type is not None:
+        query = query.where(
+            Question.question_type == question_type
+        )
+
+    # Source type filter
+    if source_type is not None:
+        query = query.where(
+            Question.source_type == source_type
+        )
+
+    # Company year filter
+    if company_year is not None:
+        query = query.where(
+            Question.company_year == company_year
+        )
+
+    # Active / inactive filter
+    if is_active is not None:
+        query = query.where(
+            Question.is_active == is_active
+        )
+
+    query = query.order_by(
+        Question.id.desc()
+    )
+
+    result = await db.execute(query)
+
+    questions = result.scalars().unique().all()
+
+    return questions
+
+# =========================
+# GET SINGLE QUESTION
+# =========================
+
+@router.get(
+    "/questions/{question_id}",
+    response_model=QuestionResponse,
+)
+async def get_question(
+    question_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    require_admin(current_user)
+
+    result = await db.execute(
+        select(Question)
+        .options(
+            selectinload(Question.options)
+        )
+        .where(
+            Question.id == question_id
+        )
+    )
+
+    question = result.scalar_one_or_none()
+
+    if not question:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Question not found",
+        )
+
+    return question
+
+# =========================
+# UPDATE QUESTION
+# =========================
+
+@router.patch(
+    "/questions/{question_id}",
+    response_model=QuestionResponse,
+)
+async def update_question(
+    question_id: int,
+    data: QuestionUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    require_admin(current_user)
+
+    # -------------------------
+    # Get question
+    # -------------------------
+
+    result = await db.execute(
+        select(Question)
+        .options(
+            selectinload(Question.options)
+        )
+        .where(
+            Question.id == question_id
+        )
+    )
+
+    question = result.scalar_one_or_none()
+
+    if not question:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Question not found",
+        )
+
+    # -------------------------
+    # Validate Topic
+    # -------------------------
+
+    new_topic_id = (
+        data.topic_id
+        if data.topic_id is not None
+        else question.topic_id
+    )
+
+    result = await db.execute(
+        select(Topic).where(
+            Topic.id == new_topic_id,
+            Topic.is_active == True,
+        )
+    )
+
+    topic = result.scalar_one_or_none()
+
+    if not topic:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Topic not found or inactive",
+        )
+
+    # -------------------------
+    # Validate Subtopic
+    # -------------------------
+
+    new_subtopic_id = (
+        data.subtopic_id
+        if data.subtopic_id is not None
+        else question.subtopic_id
+    )
+
+    result = await db.execute(
+        select(Subtopic).where(
+            Subtopic.id == new_subtopic_id,
+            Subtopic.is_active == True,
+        )
+    )
+
+    subtopic = result.scalar_one_or_none()
+
+    if not subtopic:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Subtopic not found or inactive",
+        )
+
+    # -------------------------
+    # Check relationship
+    # -------------------------
+
+    if subtopic.topic_id != new_topic_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Subtopic does not belong to the selected topic",
+        )
+
+    # -------------------------
+    # Update basic fields
+    # -------------------------
+
+    if data.topic_id is not None:
+        question.topic_id = data.topic_id
+
+    if data.subtopic_id is not None:
+        question.subtopic_id = data.subtopic_id
+
+    if data.question_text is not None:
+        question.question_text = data.question_text
+
+    if data.difficulty is not None:
+        question.difficulty = data.difficulty
+
+    if data.question_type is not None:
+        question.question_type = data.question_type
+
+    if data.source_type is not None:
+        question.source_type = data.source_type
+
+    if data.company_year is not None:
+        question.company_year = data.company_year
+
+    if data.explanation is not None:
+        question.explanation = data.explanation
+
+    if data.shortcut is not None:
+        question.shortcut = data.shortcut
+
+    if data.solution_steps is not None:
+        question.solution_steps = data.solution_steps
+
+    if data.is_active is not None:
+        question.is_active = data.is_active
+
+    # -------------------------
+    # Update options
+    # -------------------------
+
+    if data.options is not None:
+
+        if len(data.options) < 2:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="At least 2 options are required",
+            )
+
+        labels = [
+            option.option_label.upper()
+            for option in data.options
+        ]
+
+        if len(labels) != len(set(labels)):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Duplicate option labels are not allowed",
+            )
+
+        correct_options = [
+            option
+            for option in data.options
+            if option.is_correct
+        ]
+
+        if len(correct_options) != 1:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Exactly one correct option is required",
+            )
+
+        # Remove old options
+        for option in list(question.options):
+            await db.delete(option)
+
+        await db.flush()
+
+        # Create new options
+        for option_data in data.options:
+
+            option = QuestionOption(
+                question_id=question.id,
+                option_text=option_data.option_text,
+                option_label=option_data.option_label.upper(),
+                is_correct=option_data.is_correct,
+            )
+
+            db.add(option)
+
+    await db.commit()
+
+    # Reload question with options
+    result = await db.execute(
+        select(Question)
+        .options(
+            selectinload(Question.options)
+        )
+        .where(
+            Question.id == question_id
+        )
+    )
+
+    question = result.scalar_one()
+
+    return question
+
+# =========================
+# DEACTIVATE QUESTION
+# =========================
+
+@router.delete(
+    "/questions/{question_id}",
+)
+async def delete_question(
+    question_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    require_admin(current_user)
+
+    result = await db.execute(
+        select(Question).where(
+            Question.id == question_id
+        )
+    )
+
+    question = result.scalar_one_or_none()
+
+    if not question:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Question not found",
+        )
+
+    question.is_active = False
+
+    await db.commit()
+
+    return {
+        "message": "Question deactivated successfully"
+    }
