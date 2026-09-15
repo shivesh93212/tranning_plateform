@@ -7,7 +7,7 @@ from sqlalchemy import (
     String,
     Text,
 )
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.database import Base
 
@@ -81,4 +81,26 @@ class Question(Base):
         DateTime,
         default=datetime.utcnow,
         nullable=False,
+    )
+
+    options: Mapped[list["QuestionOption"]] = relationship(
+        "QuestionOption",
+        back_populates="question",
+        cascade="all, delete-orphan",
+    )
+    
+    attempts: Mapped[list["Attempt"]] = relationship(
+        "Attempt",
+        back_populates="question",
+        cascade="all, delete-orphan",
+    )
+
+    topic: Mapped["Topic"] = relationship(
+        "Topic",
+        back_populates="questions",
+    )
+
+    subtopic: Mapped["Subtopic"] = relationship(
+        "Subtopic",
+        back_populates="questions",
     )

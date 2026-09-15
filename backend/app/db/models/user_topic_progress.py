@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from sqlalchemy import DateTime, ForeignKey, Integer, UniqueConstraint
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.database import Base
 
@@ -62,4 +62,13 @@ class UserTopicProgress(Base):
             "topic_id",
             name="uq_user_topic_progress",
         ),
+    )
+
+    user: Mapped["User"] = relationship(
+        "User",
+        back_populates="topic_progress",
+    )
+
+    topic: Mapped["Topic"] = relationship(
+        "Topic",
     )

@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from sqlalchemy import DateTime, Integer, String
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.database import Base
 
@@ -56,4 +56,8 @@ class Payment(Base):
         default=datetime.utcnow,
         nullable=False,
     )
-    
+
+    user: Mapped["User"] = relationship(
+    "User",
+    back_populates="payments",
+    )

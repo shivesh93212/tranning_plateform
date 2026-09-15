@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, Integer
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.database import Base
 
@@ -45,4 +45,18 @@ class Attempt(Base):
         DateTime,
         default=datetime.utcnow,
         nullable=False,
+    )
+
+    user: Mapped["User"] = relationship(
+        "User",
+        back_populates="attempts",
+    )
+
+    question: Mapped["Question"] = relationship(
+        "Question",
+        back_populates="attempts",
+    )
+
+    selected_option: Mapped["QuestionOption | None"] = relationship(
+        "QuestionOption",
     )

@@ -1,9 +1,10 @@
 from datetime import datetime
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.database import Base
+# from app.db.models.subtopic import Subtopic
 
 
 class Topic(Base):
@@ -46,4 +47,15 @@ class Topic(Base):
         DateTime,
         default=datetime.utcnow,
         nullable=False,
+    )
+
+    subtopics: Mapped[list["Subtopic"]] = relationship(
+        "Subtopic",
+        back_populates="topic",
+        cascade="all, delete-orphan",
+    )
+
+    questions: Mapped[list["Question"]] = relationship(
+        "Question",
+        back_populates="topic",
     )

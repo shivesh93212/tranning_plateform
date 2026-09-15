@@ -1,5 +1,5 @@
 from sqlalchemy import Boolean, ForeignKey, String
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.database import Base
 
@@ -32,4 +32,14 @@ class QuestionOption(Base):
         Boolean,
         default=False,
         nullable=False,
+    )
+
+    question: Mapped["Question"] = relationship(
+        "Question",
+        back_populates="options",
+    )
+
+    attempts: Mapped[list["Attempt"]] = relationship(
+        "Attempt",
+        foreign_keys="Attempt.selected_option_id",
     )
