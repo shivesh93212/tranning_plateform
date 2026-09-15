@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime, Integer, String
+from sqlalchemy import DateTime, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.database import Base
@@ -15,11 +15,13 @@ class Payment(Base):
     )
 
     user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )
 
     subscription_id: Mapped[int] = mapped_column(
+        ForeignKey("subscriptions.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )
@@ -58,6 +60,11 @@ class Payment(Base):
     )
 
     user: Mapped["User"] = relationship(
-    "User",
-    back_populates="payments",
+        "User",
+        back_populates="payments",
+    )
+
+    subscription: Mapped["Subscription"] = relationship(
+        "Subscription",
+        back_populates="payments",
     )

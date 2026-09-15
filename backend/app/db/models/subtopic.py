@@ -52,3 +52,8 @@ class Subtopic(Base):
         "Topic",
         back_populates="subtopics",
     )
+
+    questions: Mapped[list["Question"]] = relationship(
+        "Question",
+        back_populates="subtopic",
+    )

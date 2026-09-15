@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime, String
+from sqlalchemy import DateTime, ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.database import Base
@@ -15,6 +15,7 @@ class Session(Base):
     )
 
     user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )
@@ -52,6 +53,6 @@ class Session(Base):
     )
 
     user: Mapped["User"] = relationship(
-    "User",
-    back_populates="sessions",
+        "User",
+        back_populates="sessions",
     )

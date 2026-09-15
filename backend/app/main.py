@@ -4,6 +4,7 @@ from app.routers import admin
 
 from app.db.database import engine
 
+from app.routers import auth
 
 app = FastAPI(
     title="Aptitude Platform API",
@@ -16,6 +17,7 @@ app.include_router(
     prefix="/admin",
     tags=["Admin"],
 )
+app.include_router(auth.router, prefix="/auth", tags=["Authentication"])
 
 
 @app.get("/health")
