@@ -6,11 +6,7 @@ from pydantic import BaseModel, Field
 class AttemptCreate(BaseModel):
     question_id: int
     selected_option_id: int | None = None
-
-    time_taken_seconds: int | None = Field(
-        default=None,
-        ge=0,
-    )
+    time_taken_seconds: int | None = Field(default=None, ge=0)
 
 
 class AttemptResponse(BaseModel):
@@ -22,18 +18,14 @@ class AttemptResponse(BaseModel):
     time_taken_seconds: int | None
     attempted_at: datetime
 
-    model_config = {
-        "from_attributes": True
-    }
+    model_config = {"from_attributes": True}
 
 class PracticeOptionResponse(BaseModel):
     id: int
     option_text: str
     option_label: str
 
-    model_config = {
-        "from_attributes": True
-    }
+    model_config = {"from_attributes": True}
 
 
 class PracticeQuestionResponse(BaseModel):
@@ -47,19 +39,15 @@ class PracticeQuestionResponse(BaseModel):
     company_year: int | None
     options: list[PracticeOptionResponse]
 
-    model_config = {
-        "from_attributes": True
-    }
+    model_config = {"from_attributes": True}
 
-    class AttemptResultResponse(BaseModel):
+
+class AttemptResultResponse(BaseModel):
     attempt_id: int
     question_id: int
-
     selected_option_id: int | None
     correct_option_id: int
-
     is_correct: bool
-
     explanation: str
     shortcut: str | None
     solution_steps: str | None

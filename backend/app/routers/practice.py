@@ -62,6 +62,8 @@ from app.schemas.practice_session import (
     PracticeSessionResponse,
 )
 
+from app.services.recommendation_service import get_recommended_questions
+from app.schemas.recommendation import RecommendedQuestionResponse
 
 from app.schemas.practice_session import SessionSubmitRequest, SessionSubmitResponse
 from app.db.models.question_option import QuestionOption
@@ -1333,3 +1335,39 @@ async def get_session_result(
         "status": session.status,
         "questions": question_results,
     }
+
+@router.get(
+    "/recommendations",
+    response_model=list[RecommendedQuestionResponse],
+)
+async def get_recommendations(
+    limit: int = 10,
+    current_user=Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    if limit < 1 or limit > 20:
+        raise HTTPException(
+            status_code=400,
+            detail="Limit must be between 1 and 20",
+        )
+
+    recommended = await get_recommended_questions(
+        db=db,
+        user_id=current_user.id,
+        limit=limit,
+    )
+
+    return [
+        RecommendedQuestionResponse(
+            id=question.id,
+            topic_id=question.topic_id,
+            subtopic_id=question.subtopic_id,
+            question_text=question.question_text,
+            difficulty=question.difficulty,
+            question_type=question.question_type,
+            source_type=question.source_type,
+            company_year=question.company_year,
+            reason=reason,
+        )
+        for question, reason in recommended
+    ]

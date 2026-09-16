@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-
+from app.schemas.admin_analytics import AdminAnalyticsResponse
 from app.db.database import get_db
 
 from app.dependencies.auth import get_current_user
@@ -1526,4 +1526,79 @@ async def get_user_subscription(
         expires_at=subscription.expires_at,
         is_active=subscription.is_active,
         created_at=subscription.created_at,
+    )
+
+@router.get("/analytics", response_model=AdminAnalyticsResponse)
+async def get_admin_analytics(
+    current_user=Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    require_admin(current_user)
+
+    total_attempts = await db.scalar(
+        select(func.count(Attempt.id))
+    )
+
+    correct_attempts = await db.scalar(
+        select(func.count(Attempt.id))
+        .where(Attempt.is_correct == True)
+    )
+
+    wrong_attempts = await db.scalar(
+        select(func.count(Attempt.id))
+        .where(Attempt.is_correct == False)
+    )
+
+    active_users = await db.scalar(
+        select(func.count(User.id))
+        .where(User.is_active == True)
+    )
+
+    inactive_users = await db.scalar(
+        select(func.count(User.id))
+        .where(User.is_active == False)
+    )
+
+    total_questions = await db.scalar(
+        select(func.count(Question.id))
+    )
+
+    active_questions = await db.scalar(
+        select(func.count(Question.id))
+        .where(Question.is_active == True)
+    )
+
+    successful_payments = await db.scalar(
+        select(func.count(Payment.id))
+        .where(Payment.status == "success")
+    )
+
+    failed_payments = await db.scalar(
+        select(func.count(Payment.id))
+        .where(Payment.status != "success")
+    )
+
+    total_revenue = await db.scalar(
+        select(func.coalesce(func.sum(Payment.amount), 0))
+        .where(Payment.status == "success")
+    )
+
+    overall_accuracy = (
+        (correct_attempts / total_attempts) * 100
+        if total_attempts > 0
+        else 0.0
+    )
+
+    return AdminAnalyticsResponse(
+        total_attempts=total_attempts or 0,
+        correct_attempts=correct_attempts or 0,
+        wrong_attempts=wrong_attempts or 0,
+        overall_accuracy=round(overall_accuracy, 2),
+        active_users=active_users or 0,
+        inactive_users=inactive_users or 0,
+        total_questions=total_questions or 0,
+        active_questions=active_questions or 0,
+        successful_payments=successful_payments or 0,
+        failed_payments=failed_payments or 0,
+        total_revenue=float(total_revenue or 0),
     )
