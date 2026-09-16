@@ -10,3 +10,5 @@ from app.db.models.subscription import Subscription
 from app.db.models.payment import Payment
 from app.db.models.session import Session
 from app.db.models.user_progress import UserProgress
+from app.db.models.practice_session import PracticeSession
+from app.db.models.practice_session_question import PracticeSessionQuestion

@@ -9,6 +9,11 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
     REDIS_URL: str
 
+    RAZORPAY_KEY_ID: str
+    RAZORPAY_KEY_SECRET: str
+
+    ADMIN_SETUP_KEY: str
+
     model_config = SettingsConfigDict(
         env_file=".env",
         case_sensitive=True,

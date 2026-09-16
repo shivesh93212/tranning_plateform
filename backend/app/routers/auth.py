@@ -21,6 +21,8 @@ from app.core.security import (
 )
 
 from app.dependencies.auth import get_current_user
+from app.schemas.auth import AdminSetupRequest
+
 
 router = APIRouter()
 
@@ -121,6 +123,43 @@ async def login(
         access_token=access_token,
         token_type="bearer",
     )
+
+@router.post("/admin/setup", response_model=UserResponse, status_code=201)
+async def setup_admin(
+    data: AdminSetupRequest,
+    db=Depends(get_db),
+):
+    if data.setup_key != settings.ADMIN_SETUP_KEY:
+        raise HTTPException(
+            status_code=403,
+            detail="Invalid admin setup key",
+        )
+
+    result = await db.execute(
+        select(User).where(User.email == data.email)
+    )
+
+    existing_user = result.scalar_one_or_none()
+
+    if existing_user:
+        raise HTTPException(
+            status_code=400,
+            detail="Email already registered",
+        )
+
+    admin = User(
+        name=data.name,
+        email=data.email,
+        password_hash=hash_password(data.password),
+        role="admin",
+        is_active=True,
+    )
+
+    db.add(admin)
+    await db.commit()
+    await db.refresh(admin)
+
+    return admin
 
 @router.get(
     "/me",

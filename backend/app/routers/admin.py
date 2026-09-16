@@ -3,7 +3,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.database import get_db
-from app.db.models.topic import Topic
+
 from app.dependencies.auth import get_current_user
 from app.db.models.user import User
 from app.schemas.topic import (
@@ -20,6 +20,14 @@ from app.schemas.company import (
     CompanyUpdate,
     CompanyResponse,
 )
+from app.db.models.subtopic import Subtopic
+
+
+from app.schemas.subtopic import (
+    SubtopicCreate,
+    SubtopicUpdate,
+    SubtopicResponse,
+)
 
 from app.db.models.question import Question
 from app.db.models.question_option import QuestionOption
@@ -32,6 +40,22 @@ from app.schemas.question import (
     QuestionResponse,
 )
 
+from sqlalchemy import func
+
+
+from app.db.models.attempt import Attempt
+from app.db.models.subscription import Subscription
+from app.db.models.payment import Payment
+
+from app.schemas.admin_dashboard import AdminDashboardResponse
+
+from app.schemas.admin import AdminUserResponse, AdminUserStatusUpdate
+
+from sqlalchemy.orm import selectinload
+from app.schemas.admin_billing import (
+    AdminSubscriptionResponse,
+    AdminPaymentResponse,
+)
 
 
 router = APIRouter()
@@ -265,14 +289,6 @@ async def delete_topic(
         "message": "Topic deactivated successfully"
     }
 
-from app.db.models.subtopic import Subtopic
-from app.db.models.topic import Topic
-
-from app.schemas.subtopic import (
-    SubtopicCreate,
-    SubtopicUpdate,
-    SubtopicResponse,
-)
 
 # =========================
 # CREATE SUBTOPIC
@@ -1253,3 +1269,261 @@ async def delete_question(
     return {
         "message": "Question deactivated successfully"
     }
+
+@router.get(
+    "/dashboard",
+    response_model=AdminDashboardResponse,
+)
+async def get_admin_dashboard(
+    current_user=Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    require_admin(current_user)
+
+    total_users = await db.scalar(
+        select(func.count(User.id))
+    )
+
+    active_users = await db.scalar(
+        select(func.count(User.id)).where(
+            User.is_active == True
+        )
+    )
+
+    total_topics = await db.scalar(
+        select(func.count(Topic.id))
+    )
+
+    total_subtopics = await db.scalar(
+        select(func.count(Subtopic.id))
+    )
+
+    total_questions = await db.scalar(
+        select(func.count(Question.id))
+    )
+
+    active_questions = await db.scalar(
+        select(func.count(Question.id)).where(
+            Question.is_active == True
+        )
+    )
+
+    total_attempts = await db.scalar(
+        select(func.count(Attempt.id))
+    )
+
+    total_subscriptions = await db.scalar(
+        select(func.count(Subscription.id))
+    )
+
+    successful_payments = await db.scalar(
+        select(func.count(Payment.id)).where(
+            Payment.status == "success"
+        )
+    )
+
+    total_revenue = await db.scalar(
+        select(
+            func.coalesce(
+                func.sum(Payment.amount),
+                0,
+            )
+        ).where(
+            Payment.status == "success"
+        )
+    )
+
+    return {
+        "total_users": total_users or 0,
+        "active_users": active_users or 0,
+        "total_topics": total_topics or 0,
+        "total_subtopics": total_subtopics or 0,
+        "total_questions": total_questions or 0,
+        "active_questions": active_questions or 0,
+        "total_attempts": total_attempts or 0,
+        "total_subscriptions": total_subscriptions or 0,
+        "successful_payments": successful_payments or 0,
+        "total_revenue": float(total_revenue or 0),
+    }
+
+@router.get(
+    "/users",
+    response_model=list[AdminUserResponse],
+)
+async def get_all_users(
+    current_user=Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    require_admin(current_user)
+
+    result = await db.execute(
+        select(User).order_by(User.created_at.desc())
+    )
+
+    return result.scalars().all()
+
+@router.get(
+    "/users/{user_id}",
+    response_model=AdminUserResponse,
+)
+async def get_user_by_id(
+    user_id: int,
+    current_user=Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    require_admin(current_user)
+
+    result = await db.execute(
+        select(User).where(
+            User.id == user_id
+        )
+    )
+
+    user = result.scalar_one_or_none()
+
+    if not user:
+        raise HTTPException(
+            status_code=404,
+            detail="User not found",
+        )
+
+    return user
+
+@router.patch(
+    "/users/{user_id}/status",
+    response_model=AdminUserResponse,
+)
+async def update_user_status(
+    user_id: int,
+    data: AdminUserStatusUpdate,
+    current_user=Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    require_admin(current_user)
+
+    if user_id == current_user.id:
+        raise HTTPException(
+            status_code=400,
+            detail="Admin cannot change their own status",
+        )
+
+    result = await db.execute(
+        select(User).where(
+            User.id == user_id
+        )
+    )
+
+    user = result.scalar_one_or_none()
+
+    if not user:
+        raise HTTPException(
+            status_code=404,
+            detail="User not found",
+        )
+
+    user.is_active = data.is_active
+
+    await db.commit()
+    await db.refresh(user)
+
+    return user
+
+@router.get("/subscriptions", response_model=list[AdminSubscriptionResponse])
+async def get_all_subscriptions(
+    current_user=Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    require_admin(current_user)
+
+    result = await db.execute(
+        select(Subscription, User)
+        .join(User, Subscription.user_id == User.id)
+        .order_by(Subscription.created_at.desc())
+    )
+
+    rows = result.all()
+
+    return [
+        AdminSubscriptionResponse(
+            id=subscription.id,
+            user_id=subscription.user_id,
+            user_name=user.name,
+            user_email=user.email,
+            plan=subscription.plan,
+            amount=subscription.amount,
+            starts_at=subscription.starts_at,
+            expires_at=subscription.expires_at,
+            is_active=subscription.is_active,
+            created_at=subscription.created_at,
+        )
+        for subscription, user in rows
+    ]
+
+@router.get("/payments", response_model=list[AdminPaymentResponse])
+async def get_all_payments(
+    current_user=Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    require_admin(current_user)
+
+    result = await db.execute(
+        select(Payment, User)
+        .join(User, Payment.user_id == User.id)
+        .order_by(Payment.created_at.desc())
+    )
+
+    rows = result.all()
+
+    return [
+        AdminPaymentResponse(
+            id=payment.id,
+            user_id=payment.user_id,
+            user_name=user.name,
+            user_email=user.email,
+            subscription_id=payment.subscription_id,
+            amount=payment.amount,
+            razorpay_order_id=payment.razorpay_order_id,
+            razorpay_payment_id=payment.razorpay_payment_id,
+            status=payment.status,
+            created_at=payment.created_at,
+        )
+        for payment, user in rows
+    ]
+
+@router.get(
+    "/users/{user_id}/subscription",
+    response_model=AdminSubscriptionResponse | None,
+)
+async def get_user_subscription(
+    user_id: int,
+    current_user=Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    require_admin(current_user)
+
+    result = await db.execute(
+        select(Subscription, User)
+        .join(User, Subscription.user_id == User.id)
+        .where(Subscription.user_id == user_id)
+        .order_by(Subscription.created_at.desc())
+    )
+
+    row = result.first()
+
+    if not row:
+        return None
+
+    subscription, user = row
+
+    return AdminSubscriptionResponse(
+        id=subscription.id,
+        user_id=subscription.user_id,
+        user_name=user.name,
+        user_email=user.email,
+        plan=subscription.plan,
+        amount=subscription.amount,
+        starts_at=subscription.starts_at,
+        expires_at=subscription.expires_at,
+        is_active=subscription.is_active,
+        created_at=subscription.created_at,
+    )
