@@ -909,7 +909,13 @@ async def create_question(
 
     await db.commit()
 
-    await db.refresh(question)
+    result = await db.execute(
+    select(Question)
+    .options(selectinload(Question.options))
+    .where(Question.id == question.id)
+    )
+
+    question = result.scalar_one()
 
     return question
 
