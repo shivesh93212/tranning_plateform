@@ -1,20 +1,28 @@
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { AuthProvider } from "./context/AuthContext";
+import Login from "./pages/Login";
+import Register from "./pages/Register";
+
 function App() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-950">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold text-white">
-          Aptitude Platform
-        </h1>
+    <BrowserRouter>
+      <AuthProvider>
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
 
-        <p className="mt-3 text-slate-400">
-          React + Tailwind is working 🚀
-        </p>
+          <Route
+            path="/"
+            element={<Navigate to="/login" replace />}
+          />
 
-        <button className="mt-2 rounded-lg bg-blue-600 px-6 py-3 font-semibold text-white hover:bg-blue-700">
-          Start Practice
-        </button>
-      </div>
-    </div>
+          <Route
+            path="*"
+            element={<Navigate to="/login" replace />}
+          />
+        </Routes>
+      </AuthProvider>
+    </BrowserRouter>
   );
 }
 
