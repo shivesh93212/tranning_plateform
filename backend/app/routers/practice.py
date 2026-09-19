@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.database import get_db
@@ -20,7 +20,7 @@ from app.services.progress_service import (
     update_progress_after_attempt,
 )
 
-from sqlalchemy import select
+
 from app.db.models.user_progress import UserProgress
 from app.db.models.user_topic_progress import UserTopicProgress
 from app.db.models.topic import Topic
@@ -72,6 +72,12 @@ from app.schemas.practice_session import PracticeSessionResponse
 from app.services.progress_service import update_progress_after_attempt
 
 from app.schemas.practice_session import PracticeSessionResultResponse
+
+from app.schemas.topic import TopicResponse
+from app.schemas.company import CompanyResponse
+from app.db.models.company import Company
+
+
 
 router = APIRouter()
 
@@ -282,6 +288,51 @@ async def get_attempt_result(
         shortcut=question.shortcut,
         solution_steps=question.solution_steps,
     )
+
+# =========================
+# GET PRACTICE TOPICS
+# =========================
+
+@router.get(
+    "/topics",
+    response_model=list[TopicResponse],
+)
+async def get_practice_topics(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        select(Topic)
+        .where(Topic.is_active == True)
+        .order_by(Topic.id.asc())
+    )
+
+    topics = result.scalars().all()
+
+    return topics
+
+
+# =========================
+# GET PRACTICE COMPANIES
+# =========================
+
+@router.get(
+    "/companies",
+    response_model=list[CompanyResponse],
+)
+async def get_practice_companies(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        select(Company)
+        .where(Company.is_active == True)
+        .order_by(Company.id.asc())
+    )
+
+    companies = result.scalars().all()
+
+    return companies
 
 # =========================
 # GET PRACTICE QUESTIONS

@@ -1,4 +1,4 @@
-from datetime import datetime, date, timedelta
+from datetime import datetime
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -41,9 +41,11 @@ async def update_progress_after_attempt(
 
     user_progress = result.scalar_one_or_none()
 
+    # --------------------------------
     # Create progress if first attempt
-    if not user_progress:
+    # --------------------------------
 
+    if not user_progress:
         user_progress = UserProgress(
             user_id=attempt.user_id,
             questions_solved=0,
@@ -57,15 +59,54 @@ async def update_progress_after_attempt(
         await db.flush()
 
     # --------------------------------
+    # Check previous attempt
+    # --------------------------------
+
+    result = await db.execute(
+        select(Attempt)
+        .where(
+            Attempt.user_id == attempt.user_id,
+            Attempt.question_id == attempt.question_id,
+            Attempt.id != attempt.id,
+        )
+        .order_by(Attempt.id.desc())
+    )
+
+    previous_attempt = result.scalars().first()
+
+    # --------------------------------
     # Update overall statistics
     # --------------------------------
 
-    user_progress.questions_solved += 1
+    if previous_attempt is None:
 
-    if attempt.is_correct:
-        user_progress.correct_answers += 1
+        # First time attempting this question
+
+        user_progress.questions_solved += 1
+
+        if attempt.is_correct:
+            user_progress.correct_answers += 1
+        else:
+            user_progress.wrong_answers += 1
+
     else:
-        user_progress.wrong_answers += 1
+
+        # Same question attempted again
+        # Do NOT increase questions_solved
+
+        # Remove previous result
+
+        if previous_attempt.is_correct:
+            user_progress.correct_answers -= 1
+        else:
+            user_progress.wrong_answers -= 1
+
+        # Add latest result
+
+        if attempt.is_correct:
+            user_progress.correct_answers += 1
+        else:
+            user_progress.wrong_answers += 1
 
     # --------------------------------
     # Update streak
@@ -87,14 +128,17 @@ async def update_progress_after_attempt(
         ).days
 
         if difference == 0:
+
             # Already active today
             pass
 
         elif difference == 1:
+
             # Consecutive day
             user_progress.streak_days += 1
 
         else:
+
             # Streak broken
             user_progress.streak_days = 1
 
@@ -113,7 +157,10 @@ async def update_progress_after_attempt(
 
     topic_progress = result.scalar_one_or_none()
 
+    # --------------------------------
     # Create first topic progress
+    # --------------------------------
+
     if not topic_progress:
 
         topic_progress = UserTopicProgress(
@@ -132,11 +179,34 @@ async def update_progress_after_attempt(
     # Update topic statistics
     # --------------------------------
 
-    topic_progress.questions_solved += 1
+    if previous_attempt is None:
 
-    if attempt.is_correct:
-        topic_progress.correct_answers += 1
+        # First attempt of this question
+
+        topic_progress.questions_solved += 1
+
+        if attempt.is_correct:
+            topic_progress.correct_answers += 1
+        else:
+            topic_progress.wrong_answers += 1
+
     else:
-        topic_progress.wrong_answers += 1
+
+        # Same question attempted again
+        # Do NOT increase questions_solved
+
+        # Remove previous result
+
+        if previous_attempt.is_correct:
+            topic_progress.correct_answers -= 1
+        else:
+            topic_progress.wrong_answers -= 1
+
+        # Add latest result
+
+        if attempt.is_correct:
+            topic_progress.correct_answers += 1
+        else:
+            topic_progress.wrong_answers += 1
 
     topic_progress.last_attempted_at = now
