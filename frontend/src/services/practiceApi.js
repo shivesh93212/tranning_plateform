@@ -43,13 +43,11 @@ export const startPracticeSession = async (sessionData) => {
 
 export const submitPracticeSession = async (
   sessionId,
-  answers
+  answerData
 ) => {
   const response = await api.post(
-    `/practice/sessions/${sessionId}/submit`,
-    {
-      answers,
-    }
+    `/practice/session/${sessionId}/submit`,
+    answerData
   );
 
   return response.data;
@@ -57,7 +55,7 @@ export const submitPracticeSession = async (
 
 export const getPracticeSession = async (sessionId) => {
   const response = await api.get(
-    `/practice/sessions/${sessionId}`
+    `/practice/session/${sessionId}`
   );
 
   return response.data;
@@ -65,7 +63,7 @@ export const getPracticeSession = async (sessionId) => {
 
 export const finishPracticeSession = async (sessionId) => {
   const response = await api.post(
-    `/practice/sessions/${sessionId}/finish`
+    `/practice/session/${sessionId}/finish`
   );
 
   return response.data;
@@ -73,7 +71,15 @@ export const finishPracticeSession = async (sessionId) => {
 
 export const getPracticeSessionResult = async (sessionId) => {
   const response = await api.get(
-    `/practice/sessions/${sessionId}/result`
+    `/practice/session/${sessionId}/result`
+  );
+
+  return response.data;
+};
+
+export const getPracticeSessionQuestions = async (sessionId) => {
+  const response = await api.get(
+    `/practice/session/${sessionId}/questions`
   );
 
   return response.data;
