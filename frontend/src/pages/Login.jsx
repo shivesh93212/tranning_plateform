@@ -28,11 +28,24 @@ function Login() {
     setLoading(true);
 
     try {
-      await login(form.email, form.password);
-      navigate("/dashboard");
+      const loggedInUser = await login(
+        form.email,
+        form.password
+      );
+
+      if (loggedInUser?.role === "admin") {
+        navigate("/admin/dashboard", {
+          replace: true,
+        });
+      } else {
+        navigate("/dashboard", {
+          replace: true,
+        });
+      }
     } catch (err) {
       setError(
-        err.response?.data?.detail || "Invalid email or password"
+        err.response?.data?.detail ||
+          "Invalid email or password"
       );
     } finally {
       setLoading(false);
@@ -58,7 +71,10 @@ function Login() {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-5">
+        <form
+          onSubmit={handleSubmit}
+          className="space-y-5"
+        >
           <div>
             <label className="mb-2 block text-sm font-medium text-slate-300">
               Email
