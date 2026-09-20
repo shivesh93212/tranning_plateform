@@ -1,90 +1,93 @@
+from datetime import datetime, timedelta
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
-
-from app.db.database import get_db
-from app.db.models.attempt import Attempt
-from app.db.models.question import Question
-from app.db.models.question_option import QuestionOption
-from app.db.models.user import User
-from app.dependencies.auth import get_current_user
-from app.schemas.attempt import AttemptCreate, AttemptResponse
-
 from sqlalchemy.orm import selectinload
 
-from app.db.models.question import Question
+from app.db.database import get_db
 
-from app.schemas.attempt import PracticeQuestionResponse
-from app.schemas.attempt import AttemptResultResponse
+from app.db.models.attempt import Attempt
+from app.db.models.company import Company
+from app.db.models.payment import Payment
+from app.db.models.practice_session import PracticeSession
+from app.db.models.practice_session_question import PracticeSessionQuestion
+from app.db.models.question import Question
+from app.db.models.question_option import QuestionOption
+from app.db.models.subscription import Subscription
+from app.db.models.topic import Topic
+from app.db.models.user import User
+from app.db.models.user_progress import UserProgress
+from app.db.models.user_topic_progress import UserTopicProgress
+
+from app.dependencies.auth import get_current_user
+
+from app.schemas.attempt import (
+    AttemptCreate,
+    AttemptResponse,
+    AttemptResultResponse,
+    PracticeQuestionResponse,
+)
+
+from app.schemas.company import CompanyResponse
+
+from app.schemas.dashboard import DashboardResponse
+
+from app.schemas.payment import (
+    CreateOrderRequest,
+    CreateOrderResponse,
+    VerifyPaymentRequest,
+    VerifyPaymentResponse,
+)
+
+from app.schemas.practice_session import (
+    PracticeSessionCreate,
+    PracticeSessionResponse,
+    PracticeSessionResultResponse,
+    SessionSubmitRequest,
+    SessionSubmitResponse,
+)
+
+from app.schemas.progress import (
+    UserProgressResponse,
+    TopicProgressResponse,
+)
+
+from app.schemas.subscription import (
+    SubscriptionPlanResponse,
+    SubscriptionResponse,
+)
+
+from app.schemas.topic import TopicResponse
+
+from app.schemas.recommendation import RecommendedQuestionResponse
+
+from app.services.payment_service import (
+    create_razorpay_order,
+    verify_razorpay_payment,
+)
+
 from app.services.progress_service import (
     update_progress_after_attempt,
 )
 
-
-from app.db.models.user_progress import UserProgress
-from app.db.models.user_topic_progress import UserTopicProgress
-from app.db.models.topic import Topic
-
-from app.schemas.progress import UserProgressResponse, TopicProgressResponse
-from sqlalchemy.ext.asyncio import AsyncSession
-from app.db.database import get_db
-from app.dependencies.auth import get_current_user
-from app.db.models.question import Question
-from app.db.models.user_progress import UserProgress
-from app.db.models.user_topic_progress import UserTopicProgress
-from app.db.models.topic import Topic
-from app.schemas.dashboard import DashboardResponse
-
-from app.db.models.subscription import Subscription
-from app.schemas.subscription import SubscriptionResponse
-from app.schemas.subscription import SubscriptionPlanResponse
-
-from datetime import datetime
-from app.db.models.topic import Topic
-from app.db.models.subscription import Subscription
-
-
-from app.schemas.payment import CreateOrderRequest, CreateOrderResponse
-from app.services.payment_service import create_razorpay_order
-
-from datetime import timedelta
-
-from app.db.models.payment import Payment
-from app.services.payment_service import verify_razorpay_payment
-from app.schemas.payment import VerifyPaymentRequest, VerifyPaymentResponse
-
-from app.services.subscription_service import has_active_subscription
-
-from app.db.models.practice_session import PracticeSession
-from app.db.models.practice_session_question import PracticeSessionQuestion
-from app.schemas.practice_session import (
-    PracticeSessionCreate,
-    PracticeSessionResponse,
+from app.services.recommendation_service import (
+    get_recommended_questions,
 )
 
-from app.services.recommendation_service import get_recommended_questions
-from app.schemas.recommendation import RecommendedQuestionResponse
+from app.services.subscription_service import (
+    has_active_subscription,
+)
 
-from app.schemas.practice_session import SessionSubmitRequest, SessionSubmitResponse
-from app.db.models.question_option import QuestionOption
-
-from app.schemas.practice_session import PracticeSessionResponse
-from app.services.progress_service import update_progress_after_attempt
-
-from app.schemas.practice_session import PracticeSessionResultResponse
-
-from app.schemas.topic import TopicResponse
-from app.schemas.company import CompanyResponse
-from app.db.models.company import Company
-
+from app.core.config import settings
 
 
 router = APIRouter()
 
 
-# =========================
+# =========================================================
 # SUBMIT ANSWER
-# =========================
+# =========================================================
 
 @router.post(
     "/attempt",
@@ -96,9 +99,9 @@ async def submit_attempt(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    # -------------------------
+    # -----------------------------------------------------
     # Get Question
-    # -------------------------
+    # -----------------------------------------------------
 
     result = await db.execute(
         select(Question).where(
@@ -115,9 +118,9 @@ async def submit_attempt(
             detail="Question not found or inactive",
         )
 
-    # -------------------------
+    # -----------------------------------------------------
     # Check selected option
-    # -------------------------
+    # -----------------------------------------------------
 
     selected_option = None
 
@@ -138,18 +141,18 @@ async def submit_attempt(
                 detail="Invalid option for this question",
             )
 
-    # -------------------------
+    # -----------------------------------------------------
     # Determine correct answer
-    # -------------------------
+    # -----------------------------------------------------
 
     is_correct = (
         selected_option is not None
         and selected_option.is_correct
     )
 
-    # -------------------------
+    # -----------------------------------------------------
     # Create Attempt
-    # -------------------------
+    # -----------------------------------------------------
 
     attempt = Attempt(
         user_id=current_user.id,
@@ -165,24 +168,23 @@ async def submit_attempt(
 
     db.add(attempt)
 
-    db.add(attempt)
-
     await db.flush()
 
     await update_progress_after_attempt(
         db,
         attempt,
     )
-    
+
     await db.commit()
 
     await db.refresh(attempt)
 
     return attempt
 
-# =========================
+
+# =========================================================
 # GET MY ATTEMPTS
-# =========================
+# =========================================================
 
 @router.get(
     "/attempts",
@@ -206,9 +208,10 @@ async def get_my_attempts(
 
     return attempts
 
-# =========================
+
+# =========================================================
 # GET ATTEMPT RESULT
-# =========================
+# =========================================================
 
 @router.get(
     "/attempts/{attempt_id}/result",
@@ -219,13 +222,12 @@ async def get_attempt_result(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    # -------------------------
+    # -----------------------------------------------------
     # Get user's attempt
-    # -------------------------
+    # -----------------------------------------------------
 
     result = await db.execute(
-        select(Attempt)
-        .where(
+        select(Attempt).where(
             Attempt.id == attempt_id,
             Attempt.user_id == current_user.id,
         )
@@ -239,13 +241,12 @@ async def get_attempt_result(
             detail="Attempt not found",
         )
 
-    # -------------------------
+    # -----------------------------------------------------
     # Get question
-    # -------------------------
+    # -----------------------------------------------------
 
     result = await db.execute(
-        select(Question)
-        .where(
+        select(Question).where(
             Question.id == attempt.question_id
         )
     )
@@ -258,13 +259,12 @@ async def get_attempt_result(
             detail="Question not found",
         )
 
-    # -------------------------
+    # -----------------------------------------------------
     # Get correct option
-    # -------------------------
+    # -----------------------------------------------------
 
     result = await db.execute(
-        select(QuestionOption)
-        .where(
+        select(QuestionOption).where(
             QuestionOption.question_id == question.id,
             QuestionOption.is_correct == True,
         )
@@ -289,9 +289,10 @@ async def get_attempt_result(
         solution_steps=question.solution_steps,
     )
 
-# =========================
+
+# =========================================================
 # GET PRACTICE TOPICS
-# =========================
+# =========================================================
 
 @router.get(
     "/topics",
@@ -303,8 +304,12 @@ async def get_practice_topics(
 ):
     result = await db.execute(
         select(Topic)
-        .where(Topic.is_active == True)
-        .order_by(Topic.id.asc())
+        .where(
+            Topic.is_active == True
+        )
+        .order_by(
+            Topic.id.asc()
+        )
     )
 
     topics = result.scalars().all()
@@ -312,9 +317,9 @@ async def get_practice_topics(
     return topics
 
 
-# =========================
+# =========================================================
 # GET PRACTICE COMPANIES
-# =========================
+# =========================================================
 
 @router.get(
     "/companies",
@@ -326,19 +331,27 @@ async def get_practice_companies(
 ):
     result = await db.execute(
         select(Company)
-        .where(Company.is_active == True)
-        .order_by(Company.id.asc())
+        .where(
+            Company.is_active == True
+        )
+        .order_by(
+            Company.id.asc()
+        )
     )
 
     companies = result.scalars().all()
 
     return companies
 
-# =========================
-# GET PRACTICE QUESTIONS
-# =========================
 
-@router.get("/questions", response_model=list[PracticeQuestionResponse])
+# =========================================================
+# GET PRACTICE QUESTIONS
+# =========================================================
+
+@router.get(
+    "/questions",
+    response_model=list[PracticeQuestionResponse],
+)
 async def get_practice_questions(
     topic_id: int | None = None,
     subtopic_id: int | None = None,
@@ -347,7 +360,7 @@ async def get_practice_questions(
     source_type: str | None = None,
     company_year: int | None = None,
     limit: int = 10,
-    current_user=Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     if limit < 1 or limit > 50:
@@ -356,18 +369,21 @@ async def get_practice_questions(
             detail="Limit must be between 1 and 50",
         )
 
-    # -----------------------------------------
-    # Check subscription
-    # -----------------------------------------
+    # -----------------------------------------------------
+    # Subscription
+    # -----------------------------------------------------
+
     has_subscription = await has_active_subscription(
         db,
         current_user.id,
     )
 
-    # -----------------------------------------
+    # -----------------------------------------------------
     # DSA check
-    # -----------------------------------------
+    # -----------------------------------------------------
+
     if topic_id is not None:
+
         result = await db.execute(
             select(Topic).where(
                 Topic.id == topic_id,
@@ -383,18 +399,23 @@ async def get_practice_questions(
                 detail="Topic not found",
             )
 
-        if topic.category.upper() == "DSA" and not has_subscription:
+        if (
+            topic.category.upper() == "DSA"
+            and not has_subscription
+        ):
             raise HTTPException(
                 status_code=403,
                 detail="DSA questions require an active subscription",
             )
 
-    # -----------------------------------------
-    # Get questions already attempted by user
-    # -----------------------------------------
+    # -----------------------------------------------------
+    # Get attempted questions
+    # -----------------------------------------------------
+
     attempted_question_ids = set()
 
     if topic_id is not None and not has_subscription:
+
         result = await db.execute(
             select(Attempt.question_id)
             .join(
@@ -412,10 +433,13 @@ async def get_practice_questions(
             result.scalars().all()
         )
 
-        # -----------------------------------------
+        # -------------------------------------------------
         # Free limit
-        # -----------------------------------------
-        unique_attempted_count = len(attempted_question_ids)
+        # -------------------------------------------------
+
+        unique_attempted_count = len(
+            attempted_question_ids
+        )
 
         remaining_free = 5 - unique_attempted_count
 
@@ -425,14 +449,20 @@ async def get_practice_questions(
                 detail="Free limit reached. Please subscribe to continue.",
             )
 
-        limit = min(limit, remaining_free)
+        limit = min(
+            limit,
+            remaining_free,
+        )
 
-    # -----------------------------------------
-    # Build question query
-    # -----------------------------------------
+    # -----------------------------------------------------
+    # Build query
+    # -----------------------------------------------------
+
     query = (
         select(Question)
-        .options(selectinload(Question.options))
+        .options(
+            selectinload(Question.options)
+        )
         .where(
             Question.is_active == True
         )
@@ -468,17 +498,25 @@ async def get_practice_questions(
             Question.company_year == company_year
         )
 
-    # -----------------------------------------
-    # Free users get only new questions
-    # -----------------------------------------
-    if not has_subscription and attempted_question_ids:
+    # -----------------------------------------------------
+    # Free users only get new questions
+    # -----------------------------------------------------
+
+    if (
+        not has_subscription
+        and attempted_question_ids
+    ):
         query = query.where(
-            ~Question.id.in_(attempted_question_ids)
+            ~Question.id.in_(
+                attempted_question_ids
+            )
         )
 
     query = (
         query
-        .order_by(Question.id.desc())
+        .order_by(
+            Question.id.desc()
+        )
         .limit(limit)
     )
 
@@ -486,9 +524,17 @@ async def get_practice_questions(
 
     return result.scalars().all()
 
-@router.get("/progress", response_model=UserProgressResponse)
+
+# =========================================================
+# GET MY PROGRESS
+# =========================================================
+
+@router.get(
+    "/progress",
+    response_model=UserProgressResponse,
+)
 async def get_my_progress(
-    current_user=Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(
@@ -513,7 +559,10 @@ async def get_my_progress(
 
     if progress.questions_solved > 0:
         accuracy = round(
-            (progress.correct_answers / progress.questions_solved) * 100,
+            (
+                progress.correct_answers
+                / progress.questions_solved
+            ) * 100,
             2,
         )
 
@@ -526,9 +575,17 @@ async def get_my_progress(
         "last_activity_at": progress.last_activity_at,
     }
 
-@router.get("/progress/topics", response_model=list[TopicProgressResponse])
+
+# =========================================================
+# GET TOPIC PROGRESS
+# =========================================================
+
+@router.get(
+    "/progress/topics",
+    response_model=list[TopicProgressResponse],
+)
 async def get_topic_progress(
-    current_user=Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(
@@ -558,7 +615,10 @@ async def get_topic_progress(
 
         if progress.questions_solved > 0:
             accuracy = round(
-                (progress.correct_answers / progress.questions_solved) * 100,
+                (
+                    progress.correct_answers
+                    / progress.questions_solved
+                ) * 100,
                 2,
             )
 
@@ -576,14 +636,23 @@ async def get_topic_progress(
 
     return response
 
-@router.get("/dashboard", response_model=DashboardResponse)
+
+# =========================================================
+# DASHBOARD
+# =========================================================
+
+@router.get(
+    "/dashboard",
+    response_model=DashboardResponse,
+)
 async def get_dashboard(
-    current_user=Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    # -------------------------
+    # -----------------------------------------------------
     # Overall progress
-    # -------------------------
+    # -----------------------------------------------------
+
     result = await db.execute(
         select(UserProgress).where(
             UserProgress.user_id == current_user.id
@@ -593,6 +662,7 @@ async def get_dashboard(
     progress = result.scalar_one_or_none()
 
     if progress:
+
         total_questions = progress.questions_solved
         correct_answers = progress.correct_answers
         wrong_answers = progress.wrong_answers
@@ -602,19 +672,25 @@ async def get_dashboard(
 
         if total_questions > 0:
             accuracy = round(
-                (correct_answers / total_questions) * 100,
+                (
+                    correct_answers
+                    / total_questions
+                ) * 100,
                 2,
             )
+
     else:
+
         total_questions = 0
         correct_answers = 0
         wrong_answers = 0
         streak_days = 0
         accuracy = 0.0
 
-    # -------------------------
+    # -----------------------------------------------------
     # Topic progress
-    # -------------------------
+    # -----------------------------------------------------
+
     result = await db.execute(
         select(
             UserTopicProgress,
@@ -660,11 +736,15 @@ async def get_dashboard(
             }
         )
 
-    # -------------------------
+    # -----------------------------------------------------
     # Recent attempts
-    # -------------------------
+    # -----------------------------------------------------
+
     result = await db.execute(
-        select(Attempt, Question.question_text)
+        select(
+            Attempt,
+            Question.question_text,
+        )
         .join(
             Question,
             Attempt.question_id == Question.id,
@@ -683,6 +763,7 @@ async def get_dashboard(
     recent_attempts = []
 
     for attempt, question_text in attempt_rows:
+
         recent_attempts.append(
             {
                 "attempt_id": attempt.id,
@@ -694,9 +775,10 @@ async def get_dashboard(
             }
         )
 
-    # -------------------------
-    # Final dashboard response
-    # -------------------------
+    # -----------------------------------------------------
+    # Final dashboard
+    # -----------------------------------------------------
+
     return {
         "user_name": current_user.name,
         "total_questions_solved": total_questions,
@@ -708,9 +790,17 @@ async def get_dashboard(
         "recent_attempts": recent_attempts,
     }
 
-@router.get("/subscription", response_model=SubscriptionResponse | None)
+
+# =========================================================
+# GET SUBSCRIPTION
+# =========================================================
+
+@router.get(
+    "/subscription",
+    response_model=SubscriptionResponse | None,
+)
 async def get_my_subscription(
-    current_user=Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(
@@ -719,15 +809,26 @@ async def get_my_subscription(
             Subscription.user_id == current_user.id,
             Subscription.is_active == True,
         )
-        .order_by(Subscription.expires_at.desc())
+        .order_by(
+            Subscription.expires_at.desc()
+        )
     )
 
     subscription = result.scalars().first()
 
     return subscription
 
-@router.get("/subscription/plans", response_model=list[SubscriptionPlanResponse])
+
+# =========================================================
+# SUBSCRIPTION PLANS
+# =========================================================
+
+@router.get(
+    "/subscription/plans",
+    response_model=list[SubscriptionPlanResponse],
+)
 async def get_subscription_plans():
+
     return [
         {
             "plan": "1_month",
@@ -749,10 +850,18 @@ async def get_subscription_plans():
         },
     ]
 
-@router.post("/subscription/create-order", response_model=CreateOrderResponse)
+
+# =========================================================
+# CREATE SUBSCRIPTION ORDER
+# =========================================================
+
+@router.post(
+    "/subscription/create-order",
+    response_model=CreateOrderResponse,
+)
 async def create_subscription_order(
     data: CreateOrderRequest,
-    current_user=Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     if data.plan not in PLANS:
@@ -762,7 +871,9 @@ async def create_subscription_order(
         )
 
     try:
-        order = create_razorpay_order(data.plan)
+        order = create_razorpay_order(
+            data.plan
+        )
 
     except Exception:
         raise HTTPException(
@@ -772,7 +883,6 @@ async def create_subscription_order(
 
     amount = PLANS[data.plan]["amount"]
 
-    # Save payment order in database
     payment = Payment(
         user_id=current_user.id,
         subscription_id=None,
@@ -784,6 +894,7 @@ async def create_subscription_order(
     )
 
     db.add(payment)
+
     await db.commit()
 
     return {
@@ -794,16 +905,20 @@ async def create_subscription_order(
         "plan": data.plan,
     }
 
+
+# =========================================================
+# VERIFY PAYMENT
+# =========================================================
+
 @router.post(
     "/subscription/verify-payment",
     response_model=VerifyPaymentResponse,
 )
 async def verify_payment(
     data: VerifyPaymentRequest,
-    current_user=Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    # Validate plan
     if data.plan not in PLANS:
         raise HTTPException(
             status_code=400,
@@ -812,11 +927,12 @@ async def verify_payment(
 
     plan_data = PLANS[data.plan]
 
-    # Find payment order
     result = await db.execute(
         select(Payment).where(
-            Payment.razorpay_order_id == data.razorpay_order_id,
-            Payment.user_id == current_user.id,
+            Payment.razorpay_order_id
+            == data.razorpay_order_id,
+            Payment.user_id
+            == current_user.id,
         )
     )
 
@@ -828,21 +944,18 @@ async def verify_payment(
             detail="Payment order not found",
         )
 
-    # Prevent already processed order
     if payment_record.status == "success":
         raise HTTPException(
             status_code=400,
             detail="Payment already processed",
         )
 
-    # Verify amount
     if payment_record.amount != plan_data["amount"]:
         raise HTTPException(
             status_code=400,
             detail="Payment amount does not match selected plan",
         )
 
-    # Verify Razorpay signature
     is_valid = verify_razorpay_payment(
         data.razorpay_order_id,
         data.razorpay_payment_id,
@@ -850,7 +963,9 @@ async def verify_payment(
     )
 
     if not is_valid:
+
         payment_record.status = "failed"
+
         await db.commit()
 
         raise HTTPException(
@@ -858,7 +973,6 @@ async def verify_payment(
             detail="Payment verification failed",
         )
 
-    # Check duplicate payment ID
     result = await db.execute(
         select(Payment).where(
             Payment.razorpay_payment_id
@@ -874,7 +988,6 @@ async def verify_payment(
             detail="Payment already processed",
         )
 
-    # Deactivate existing subscription
     result = await db.execute(
         select(Subscription).where(
             Subscription.user_id == current_user.id,
@@ -887,7 +1000,6 @@ async def verify_payment(
     if old_subscription:
         old_subscription.is_active = False
 
-    # Create new subscription
     now = datetime.utcnow()
 
     subscription = Subscription(
@@ -902,15 +1014,20 @@ async def verify_payment(
     )
 
     db.add(subscription)
+
     await db.flush()
 
-    # Update payment
     payment_record.subscription_id = subscription.id
-    payment_record.razorpay_payment_id = data.razorpay_payment_id
-    payment_record.signature = data.razorpay_signature
+    payment_record.razorpay_payment_id = (
+        data.razorpay_payment_id
+    )
+    payment_record.signature = (
+        data.razorpay_signature
+    )
     payment_record.status = "success"
 
     await db.commit()
+
     await db.refresh(subscription)
 
     return {
@@ -920,16 +1037,26 @@ async def verify_payment(
         "expires_at": subscription.expires_at,
     }
 
+
+# =========================================================
+# START PRACTICE SESSION
+# =========================================================
+
 @router.post(
     "/session/start",
     response_model=PracticeSessionResponse,
 )
 async def start_practice_session(
     data: PracticeSessionCreate,
-    current_user=Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    # -----------------------------------------------------
+    # Validate topic
+    # -----------------------------------------------------
+
     if data.topic_id is not None:
+
         result = await db.execute(
             select(Topic).where(
                 Topic.id == data.topic_id,
@@ -950,25 +1077,32 @@ async def start_practice_session(
             current_user.id,
         )
 
-        if topic.category.upper() == "DSA" and not has_subscription:
+        if (
+            topic.category.upper() == "DSA"
+            and not has_subscription
+        ):
             raise HTTPException(
                 status_code=403,
                 detail="DSA practice requires an active subscription",
             )
 
-    # Check subscription
+    # -----------------------------------------------------
+    # Subscription
+    # -----------------------------------------------------
+
     has_subscription = await has_active_subscription(
         db,
         current_user.id,
     )
 
-    # -----------------------------------------
-    # Build question query
-    # -----------------------------------------
+    # -----------------------------------------------------
+    # Question query
+    # -----------------------------------------------------
+
     query = (
         select(Question.id)
         .where(
-            Question.is_active == True,
+            Question.is_active == True
         )
     )
 
@@ -977,9 +1111,10 @@ async def start_practice_session(
             Question.topic_id == data.topic_id
         )
 
-    # -----------------------------------------
-    # Free user → only unattempted questions
-    # -----------------------------------------
+    # -----------------------------------------------------
+    # Free user → unattempted questions
+    # -----------------------------------------------------
+
     if not has_subscription:
 
         result = await db.execute(
@@ -989,7 +1124,7 @@ async def start_practice_session(
                 Attempt.question_id == Question.id,
             )
             .where(
-                Attempt.user_id == current_user.id,
+                Attempt.user_id == current_user.id
             )
             .distinct()
         )
@@ -1003,11 +1138,14 @@ async def start_practice_session(
                 ~Question.id.in_(attempted_ids)
             )
 
-    # -----------------------------------------
-    # Random questions
-    # -----------------------------------------
-    query = query.order_by(func.random()).limit(
-        data.total_questions
+    # -----------------------------------------------------
+    # Random selection
+    # -----------------------------------------------------
+
+    query = (
+        query
+        .order_by(func.random())
+        .limit(data.total_questions)
     )
 
     result = await db.execute(query)
@@ -1017,12 +1155,16 @@ async def start_practice_session(
     if len(question_ids) < data.total_questions:
         raise HTTPException(
             status_code=400,
-            detail=f"Only {len(question_ids)} questions are available",
+            detail=(
+                f"Only {len(question_ids)} "
+                f"questions are available"
+            ),
         )
 
-    # -----------------------------------------
+    # -----------------------------------------------------
     # Create session
-    # -----------------------------------------
+    # -----------------------------------------------------
+
     session = PracticeSession(
         user_id=current_user.id,
         topic_id=data.topic_id,
@@ -1032,12 +1174,17 @@ async def start_practice_session(
     )
 
     db.add(session)
+
     await db.flush()
 
-    # -----------------------------------------
-    # Add questions to session
-    # -----------------------------------------
-    for index, question_id in enumerate(question_ids, start=1):
+    # -----------------------------------------------------
+    # Add questions
+    # -----------------------------------------------------
+
+    for index, question_id in enumerate(
+        question_ids,
+        start=1,
+    ):
 
         session_question = PracticeSessionQuestion(
             session_id=session.id,
@@ -1049,9 +1196,10 @@ async def start_practice_session(
 
     await db.commit()
 
-    # -----------------------------------------
+    # -----------------------------------------------------
     # Reload session
-    # -----------------------------------------
+    # -----------------------------------------------------
+
     result = await db.execute(
         select(PracticeSession)
         .options(
@@ -1068,6 +1216,11 @@ async def start_practice_session(
 
     return session
 
+
+# =========================================================
+# SUBMIT SESSION QUESTION
+# =========================================================
+
 @router.post(
     "/session/{session_id}/submit",
     response_model=SessionSubmitResponse,
@@ -1075,10 +1228,9 @@ async def start_practice_session(
 async def submit_session_question(
     session_id: int,
     data: SessionSubmitRequest,
-    current_user=Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    # Find session
     result = await db.execute(
         select(PracticeSession).where(
             PracticeSession.id == session_id,
@@ -1100,7 +1252,10 @@ async def submit_session_question(
             detail="Practice session is already completed",
         )
 
-    # Find session question
+    # -----------------------------------------------------
+    # Session question
+    # -----------------------------------------------------
+
     result = await db.execute(
         select(PracticeSessionQuestion).where(
             PracticeSessionQuestion.session_id == session_id,
@@ -1116,18 +1271,23 @@ async def submit_session_question(
             detail="Question does not belong to this session",
         )
 
-    # Prevent duplicate submission
     if session_question.answered_at is not None:
         raise HTTPException(
             status_code=400,
             detail="Question already answered",
         )
 
-    # No option selected
+    # -----------------------------------------------------
+    # No option
+    # -----------------------------------------------------
+
     if data.selected_option_id is None:
+
         session_question.selected_option_id = None
         session_question.is_correct = False
-        session_question.time_taken_seconds = data.time_taken_seconds
+        session_question.time_taken_seconds = (
+            data.time_taken_seconds
+        )
         session_question.answered_at = datetime.utcnow()
 
         await db.commit()
@@ -1139,7 +1299,10 @@ async def submit_session_question(
             "score": session.score,
         }
 
-    # Validate selected option
+    # -----------------------------------------------------
+    # Validate option
+    # -----------------------------------------------------
+
     result = await db.execute(
         select(QuestionOption).where(
             QuestionOption.id == data.selected_option_id,
@@ -1157,13 +1320,18 @@ async def submit_session_question(
 
     is_correct = option.is_correct
 
-    # Update session question
-    session_question.selected_option_id = data.selected_option_id
+    session_question.selected_option_id = (
+        data.selected_option_id
+    )
+
     session_question.is_correct = is_correct
-    session_question.time_taken_seconds = data.time_taken_seconds
+
+    session_question.time_taken_seconds = (
+        data.time_taken_seconds
+    )
+
     session_question.answered_at = datetime.utcnow()
 
-    # Update score
     if is_correct:
         session.score += 1
 
@@ -1176,13 +1344,87 @@ async def submit_session_question(
         "score": session.score,
     }
 
+
+# =========================================================
+# GET SESSION QUESTIONS
+# IMPORTANT:
+# This MUST be BEFORE /session/{session_id}
+# =========================================================
+
+@router.get(
+    "/session/{session_id}/questions",
+    response_model=list[PracticeQuestionResponse],
+)
+async def get_session_questions(
+    session_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    # -----------------------------------------------------
+    # Verify session
+    # -----------------------------------------------------
+
+    result = await db.execute(
+        select(PracticeSession).where(
+            PracticeSession.id == session_id,
+            PracticeSession.user_id == current_user.id,
+        )
+    )
+
+    session = result.scalar_one_or_none()
+
+    if not session:
+        raise HTTPException(
+            status_code=404,
+            detail="Practice session not found",
+        )
+
+    # -----------------------------------------------------
+    # Get exact questions assigned to this session
+    # -----------------------------------------------------
+
+    result = await db.execute(
+        select(Question)
+        .join(
+            PracticeSessionQuestion,
+            PracticeSessionQuestion.question_id
+            == Question.id,
+        )
+        .where(
+            PracticeSessionQuestion.session_id
+            == session_id,
+            Question.is_active == True,
+        )
+        .options(
+            selectinload(Question.options)
+        )
+        .order_by(
+            PracticeSessionQuestion.question_order.asc()
+        )
+    )
+
+    questions = result.scalars().all()
+
+    if not questions:
+        raise HTTPException(
+            status_code=404,
+            detail="No questions found in this session",
+        )
+
+    return questions
+
+
+# =========================================================
+# GET PRACTICE SESSION
+# =========================================================
+
 @router.get(
     "/session/{session_id}",
     response_model=PracticeSessionResponse,
 )
 async def get_practice_session(
     session_id: int,
-    current_user=Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(
@@ -1208,17 +1450,25 @@ async def get_practice_session(
 
     return session
 
-@router.post("/session/{session_id}/finish")
+
+# =========================================================
+# FINISH PRACTICE SESSION
+# =========================================================
+
+@router.post(
+    "/session/{session_id}/finish"
+)
 async def finish_practice_session(
     session_id: int,
-    current_user=Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    # Find session
     result = await db.execute(
         select(PracticeSession)
         .options(
-            selectinload(PracticeSession.questions)
+            selectinload(
+                PracticeSession.questions
+            )
         )
         .where(
             PracticeSession.id == session_id,
@@ -1240,12 +1490,12 @@ async def finish_practice_session(
             detail="Practice session already completed",
         )
 
-    # -----------------------------------------
-    # Create Attempts
-    # -----------------------------------------
+    # -----------------------------------------------------
+    # Create attempts
+    # -----------------------------------------------------
+
     for session_question in session.questions:
 
-        # Only answered questions
         if session_question.answered_at is None:
             continue
 
@@ -1262,15 +1512,15 @@ async def finish_practice_session(
 
         await db.flush()
 
-        # Update global + topic progress
         await update_progress_after_attempt(
             db,
             attempt,
         )
 
-    # -----------------------------------------
-    # Complete session
-    # -----------------------------------------
+    # -----------------------------------------------------
+    # Complete
+    # -----------------------------------------------------
+
     session.status = "completed"
     session.completed_at = datetime.utcnow()
 
@@ -1285,13 +1535,18 @@ async def finish_practice_session(
         "completed_at": session.completed_at,
     }
 
+
+# =========================================================
+# GET SESSION RESULT
+# =========================================================
+
 @router.get(
     "/session/{session_id}/result",
     response_model=PracticeSessionResultResponse,
 )
 async def get_session_result(
     session_id: int,
-    current_user=Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(
@@ -1338,19 +1593,25 @@ async def get_session_result(
     wrong_answers = sum(
         1
         for question in questions
-        if question.answered_at is not None
-        and question.is_correct is False
+        if (
+            question.answered_at is not None
+            and question.is_correct is False
+        )
     )
 
     unanswered_questions = (
-        session.total_questions - answered_questions
+        session.total_questions
+        - answered_questions
     )
 
     accuracy = 0.0
 
     if answered_questions > 0:
         accuracy = round(
-            (correct_answers / answered_questions) * 100,
+            (
+                correct_answers
+                / answered_questions
+            ) * 100,
             2,
         )
 
@@ -1387,13 +1648,18 @@ async def get_session_result(
         "questions": question_results,
     }
 
+
+# =========================================================
+# RECOMMENDATIONS
+# =========================================================
+
 @router.get(
     "/recommendations",
     response_model=list[RecommendedQuestionResponse],
 )
 async def get_recommendations(
     limit: int = 10,
-    current_user=Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     if limit < 1 or limit > 20:
