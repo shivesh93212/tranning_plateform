@@ -9,27 +9,25 @@ import { AuthProvider } from "./context/AuthContext";
 
 import Login from "./pages/Login";
 import Register from "./pages/Register";
-
-import ProtectedRoute from "./routes/ProtectedRoute";
-import AdminRoute from "./routes/AdminRoute";
-
 import Dashboard from "./pages/Dashboard";
 import PracticeTest from "./pages/PracticeTest";
 import Practice from "./pages/Practice";
+import Subscription from "./pages/Subscription";
+import DSA from "./pages/DSA";
+
+import ProtectedRoute from "./routes/ProtectedRoute";
+import AdminRoute from "./routes/AdminRoute";
 
 import AppLayout from "./layouts/AppLayout";
 import AdminLayout from "./layouts/AdminLayout";
 
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminUsers from "./pages/admin/AdminUsers";
-
+import AdminQuestions from "./pages/admin/AdminQuestions";
 import AdminTopics from "./pages/admin/AdminTopics";
 import AdminCompanies from "./pages/admin/AdminCompanies";
-
 import AdminSubscriptions from "./pages/admin/AdminSubscriptions";
-
 import AdminPayments from "./pages/admin/AdminPayments";
-
 import AdminAnalytics from "./pages/admin/AdminAnalytics";
 
 function App() {
@@ -41,24 +39,16 @@ function App() {
               PUBLIC ROUTES
           ========================= */}
 
-          <Route
-            path="/login"
-            element={<Login />}
-          />
+          <Route path="/login" element={<Login />} />
 
-          <Route
-            path="/register"
-            element={<Register />}
-          />
+          <Route path="/register" element={<Register />} />
 
           {/* =========================
               PROTECTED ROUTES
           ========================= */}
 
           <Route element={<ProtectedRoute />}>
-            {/* =========================
-                USER DASHBOARD
-            ========================= */}
+            {/* DASHBOARD */}
 
             <Route
               path="/dashboard"
@@ -69,9 +59,7 @@ function App() {
               }
             />
 
-            {/* =========================
-                PRACTICE
-            ========================= */}
+            {/* PRACTICE */}
 
             <Route
               path="/practice"
@@ -82,15 +70,35 @@ function App() {
               }
             />
 
-            {/* =========================
-                PRACTICE TEST
-            ========================= */}
+            {/* PRACTICE TEST */}
 
             <Route
               path="/practice-test"
               element={
                 <AppLayout>
                   <PracticeTest />
+                </AppLayout>
+              }
+            />
+
+            {/* SUBSCRIPTION */}
+
+            <Route
+              path="/subscription"
+              element={
+                <AppLayout>
+                  <Subscription />
+                </AppLayout>
+              }
+            />
+
+            {/* DSA */}
+
+            <Route
+              path="/dsa"
+              element={
+                <AppLayout>
+                  <DSA />
                 </AppLayout>
               }
             />
@@ -121,53 +129,73 @@ function App() {
                   </AdminLayout>
                 }
               />
+
+              {/* ADMIN QUESTIONS */}
+
+              <Route
+                path="/admin/questions"
+                element={
+                  <AdminLayout>
+                    <AdminQuestions />
+                  </AdminLayout>
+                }
+              />
+
+              {/* ADMIN TOPICS */}
+
+              <Route
+                path="/admin/topics"
+                element={
+                  <AdminLayout>
+                    <AdminTopics />
+                  </AdminLayout>
+                }
+              />
+
+              {/* ADMIN COMPANIES */}
+
+              <Route
+                path="/admin/companies"
+                element={
+                  <AdminLayout>
+                    <AdminCompanies />
+                  </AdminLayout>
+                }
+              />
+
+              {/* ADMIN SUBSCRIPTIONS */}
+
+              <Route
+                path="/admin/subscriptions"
+                element={
+                  <AdminLayout>
+                    <AdminSubscriptions />
+                  </AdminLayout>
+                }
+              />
+
+              {/* ADMIN PAYMENTS */}
+
+              <Route
+                path="/admin/payments"
+                element={
+                  <AdminLayout>
+                    <AdminPayments />
+                  </AdminLayout>
+                }
+              />
+
+              {/* ADMIN ANALYTICS */}
+
+              <Route
+                path="/admin/analytics"
+                element={
+                  <AdminLayout>
+                    <AdminAnalytics />
+                  </AdminLayout>
+                }
+              />
             </Route>
-
-            <Route
-  path="/admin/topics"
-  element={
-    <AdminLayout>
-      <AdminTopics />
-    </AdminLayout>
-  }
-/>
-
-<Route
-  path="/admin/companies"
-  element={
-    <AdminLayout>
-      <AdminCompanies />
-    </AdminLayout>
-  }
-/>
-
-<Route
-  path="/admin/subscriptions"
-  element={
-    <AdminLayout>
-      <AdminSubscriptions />
-    </AdminLayout>
-  }
-/>
-
-<Route
-  path="/admin/payments"
-  element={
-    <AdminLayout>
-      <AdminPayments />
-    </AdminLayout>
-  }
-/>
-
-<Route
-  path="/admin/analytics"
-  element={
-    <AdminLayout>
-      <AdminAnalytics />
-    </AdminLayout>
-  }
-/>
-
           </Route>
 
           {/* =========================
