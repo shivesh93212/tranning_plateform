@@ -21,6 +21,7 @@ from app.db.models.user_progress import UserProgress
 from app.db.models.user_topic_progress import UserTopicProgress
 
 from app.dependencies.auth import get_current_user
+from app.dependencies.premium import require_premium_user
 
 from app.schemas.attempt import (
     AttemptCreate,
@@ -342,6 +343,57 @@ async def get_practice_companies(
     companies = result.scalars().all()
 
     return companies
+
+
+# =========================================================
+# GET DSA QUESTIONS
+# PREMIUM USERS + ADMIN ONLY
+# =========================================================
+
+@router.get(
+    "/dsa",
+)
+async def get_dsa_questions(
+    current_user: User = Depends(require_premium_user),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        select(Question)
+        .options(
+            selectinload(Question.company),
+            selectinload(Question.topic),
+        )
+        .where(
+            Question.is_active == True,
+            Question.source_type == "dsa",
+        )
+        .order_by(
+            Question.id.desc()
+        )
+    )
+
+    questions = result.scalars().all()
+
+    return [
+        {
+            "id": question.id,
+            "title": question.question_text,
+            "company": (
+                question.company.name
+                if question.company
+                else "Unknown"
+            ),
+            "company_id": question.company_id,
+            "topic": (
+                question.topic.name
+                if question.topic
+                else "Unknown"
+            ),
+            "difficulty": question.difficulty,
+            "link": question.problem_link,
+        }
+        for question in questions
+    ]
 
 
 # =========================================================

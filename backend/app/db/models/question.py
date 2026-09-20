@@ -6,6 +6,7 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
+    Boolean,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -57,6 +58,17 @@ class Question(Base):
         nullable=True,
     )
 
+    company_id: Mapped[int | None] = mapped_column(
+    ForeignKey("companies.id"),
+    nullable=True,
+    index=True,
+    )
+
+    problem_link: Mapped[str | None] = mapped_column(
+    String(500),
+    nullable=True,
+   )
+
     explanation: Mapped[str] = mapped_column(
         Text,
         nullable=False,
@@ -104,3 +116,7 @@ class Question(Base):
         "Subtopic",
         back_populates="questions",
     )
+
+    company: Mapped["Company | None"] = relationship(
+    "Company",
+   )
