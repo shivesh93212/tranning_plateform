@@ -7,23 +7,30 @@ import {
 
 import { AuthProvider } from "./context/AuthContext";
 
+// Public pages
 import Login from "./pages/Login";
 import Register from "./pages/Register";
+
+// User pages
 import Dashboard from "./pages/Dashboard";
-import PracticeTest from "./pages/PracticeTest";
 import Practice from "./pages/Practice";
+import PracticeTest from "./pages/PracticeTest";
 import Subscription from "./pages/Subscription";
 import DSA from "./pages/DSA";
 
+// Route guards
 import ProtectedRoute from "./routes/ProtectedRoute";
 import AdminRoute from "./routes/AdminRoute";
 
+// Layouts
 import AppLayout from "./layouts/AppLayout";
 import AdminLayout from "./layouts/AdminLayout";
 
+// Admin pages
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminUsers from "./pages/admin/AdminUsers";
 import AdminQuestions from "./pages/admin/AdminQuestions";
+import AdminDSA from "./pages/admin/AdminDSA";
 import AdminTopics from "./pages/admin/AdminTopics";
 import AdminCompanies from "./pages/admin/AdminCompanies";
 import AdminSubscriptions from "./pages/admin/AdminSubscriptions";
@@ -39,17 +46,22 @@ function App() {
               PUBLIC ROUTES
           ========================= */}
 
-          <Route path="/login" element={<Login />} />
+          <Route
+            path="/login"
+            element={<Login />}
+          />
 
-          <Route path="/register" element={<Register />} />
+          <Route
+            path="/register"
+            element={<Register />}
+          />
 
           {/* =========================
-              PROTECTED ROUTES
+              PROTECTED USER ROUTES
           ========================= */}
 
           <Route element={<ProtectedRoute />}>
-            {/* DASHBOARD */}
-
+            {/* Dashboard */}
             <Route
               path="/dashboard"
               element={
@@ -59,8 +71,7 @@ function App() {
               }
             />
 
-            {/* PRACTICE */}
-
+            {/* Practice */}
             <Route
               path="/practice"
               element={
@@ -70,8 +81,7 @@ function App() {
               }
             />
 
-            {/* PRACTICE TEST */}
-
+            {/* Mock Test */}
             <Route
               path="/practice-test"
               element={
@@ -81,8 +91,7 @@ function App() {
               }
             />
 
-            {/* SUBSCRIPTION */}
-
+            {/* Subscription */}
             <Route
               path="/subscription"
               element={
@@ -93,7 +102,6 @@ function App() {
             />
 
             {/* DSA */}
-
             <Route
               path="/dsa"
               element={
@@ -108,8 +116,7 @@ function App() {
             ========================= */}
 
             <Route element={<AdminRoute />}>
-              {/* ADMIN DASHBOARD */}
-
+              {/* Admin Dashboard */}
               <Route
                 path="/admin/dashboard"
                 element={
@@ -119,8 +126,7 @@ function App() {
                 }
               />
 
-              {/* ADMIN USERS */}
-
+              {/* Admin Users */}
               <Route
                 path="/admin/users"
                 element={
@@ -130,8 +136,7 @@ function App() {
                 }
               />
 
-              {/* ADMIN QUESTIONS */}
-
+              {/* Admin Questions */}
               <Route
                 path="/admin/questions"
                 element={
@@ -141,8 +146,17 @@ function App() {
                 }
               />
 
-              {/* ADMIN TOPICS */}
+              {/* Admin DSA Questions */}
+              <Route
+                path="/admin/dsa"
+                element={
+                  <AdminLayout>
+                    <AdminDSA />
+                  </AdminLayout>
+                }
+              />
 
+              {/* Admin Topics */}
               <Route
                 path="/admin/topics"
                 element={
@@ -152,8 +166,7 @@ function App() {
                 }
               />
 
-              {/* ADMIN COMPANIES */}
-
+              {/* Admin Companies */}
               <Route
                 path="/admin/companies"
                 element={
@@ -163,8 +176,7 @@ function App() {
                 }
               />
 
-              {/* ADMIN SUBSCRIPTIONS */}
-
+              {/* Admin Subscriptions */}
               <Route
                 path="/admin/subscriptions"
                 element={
@@ -174,8 +186,7 @@ function App() {
                 }
               />
 
-              {/* ADMIN PAYMENTS */}
-
+              {/* Admin Payments */}
               <Route
                 path="/admin/payments"
                 element={
@@ -185,8 +196,7 @@ function App() {
                 }
               />
 
-              {/* ADMIN ANALYTICS */}
-
+              {/* Admin Analytics */}
               <Route
                 path="/admin/analytics"
                 element={

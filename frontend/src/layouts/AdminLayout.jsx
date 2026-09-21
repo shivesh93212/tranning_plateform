@@ -5,6 +5,7 @@ import { NavLink, useNavigate } from "react-router-dom";
 import {
   BarChart3,
   Building2,
+  Code2,
   CreditCard,
   FileQuestion,
   LayoutDashboard,
@@ -33,6 +34,11 @@ const navItems = [
     label: "Questions",
     path: "/admin/questions",
     icon: FileQuestion,
+  },
+  {
+    label: "DSA Questions",
+    path: "/admin/dsa",
+    icon: Code2,
   },
   {
     label: "Topics",
@@ -70,6 +76,7 @@ function AdminLayout({ children }) {
 
   const handleLogout = () => {
     logout();
+    setMobileOpen(false);
     navigate("/login", { replace: true });
   };
 
@@ -95,6 +102,11 @@ function AdminLayout({ children }) {
             setCollapsed((value) => !value)
           }
           className="hidden rounded-lg p-2 text-slate-400 transition hover:bg-slate-800 hover:text-white lg:block"
+          aria-label={
+            collapsed
+              ? "Expand sidebar"
+              : "Collapse sidebar"
+          }
         >
           {collapsed ? (
             <PanelLeftOpen size={20} />
@@ -106,7 +118,8 @@ function AdminLayout({ children }) {
         <button
           type="button"
           onClick={() => setMobileOpen(false)}
-          className="rounded-lg p-2 text-slate-400 hover:bg-slate-800 hover:text-white lg:hidden"
+          className="rounded-lg p-2 text-slate-400 transition hover:bg-slate-800 hover:text-white lg:hidden"
+          aria-label="Close sidebar"
         >
           <X size={20} />
         </button>
@@ -158,6 +171,7 @@ function AdminLayout({ children }) {
               key={item.path}
               to={item.path}
               onClick={() => setMobileOpen(false)}
+              title={collapsed ? item.label : undefined}
               className={({ isActive }) =>
                 `flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm font-medium transition ${
                   isActive
@@ -188,13 +202,17 @@ function AdminLayout({ children }) {
         <button
           type="button"
           onClick={handleLogout}
+          title={collapsed ? "Logout" : undefined}
           className={`flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-sm font-medium text-red-400 transition hover:bg-red-500/10 ${
             collapsed
               ? "lg:justify-center lg:px-0"
               : ""
           }`}
         >
-          <LogOut size={19} />
+          <LogOut
+            size={19}
+            className="shrink-0"
+          />
 
           {!collapsed && <span>Logout</span>}
         </button>
@@ -220,6 +238,7 @@ function AdminLayout({ children }) {
           type="button"
           onClick={() => setMobileOpen(true)}
           className="rounded-xl p-2.5 text-slate-300 transition hover:bg-slate-800"
+          aria-label="Open sidebar"
         >
           <Menu size={22} />
         </button>

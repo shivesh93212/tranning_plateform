@@ -273,3 +273,36 @@ export const getAdminAnalytics = async () => {
 
   return response.data;
 };
+
+export const getAdminDSAQuestions = async () => {
+  const response = await api.get("/admin/dsa");
+  return response.data;
+};
+
+export const createAdminDSAQuestion = async (data) => {
+  const response = await api.post(
+    "/admin/dsa",
+    data
+  );
+  return response.data;
+};
+
+export const updateAdminDSAQuestion = async (
+  questionId,
+  data
+) => {
+  const response = await api.patch(
+    `/admin/dsa/${questionId}`,
+    data
+  );
+  return response.data;
+};
+
+export const deleteAdminDSAQuestion = async (
+  questionId
+) => {
+  const response = await api.delete(
+    `/admin/dsa/${questionId}`
+  );
+  return response.data;
+};
