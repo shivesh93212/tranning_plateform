@@ -3,7 +3,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.schemas.admin_analytics import AdminAnalyticsResponse
 from app.db.database import get_db
-
+from sqlalchemy.orm import selectinload
 from app.dependencies.auth import get_current_user
 from app.db.models.user import User
 from app.schemas.topic import (
@@ -1608,3 +1608,331 @@ async def get_admin_analytics(
         failed_payments=failed_payments or 0,
         total_revenue=float(total_revenue or 0),
     )
+
+# =========================
+# CREATE DSA QUESTION
+# =========================
+
+@router.post(
+    "/dsa",
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_dsa_question(
+    data: dict,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    require_admin(current_user)
+
+    topic_id = data.get("topic_id")
+    company_id = data.get("company_id")
+    question_text = data.get("question_text")
+    difficulty = data.get("difficulty")
+    problem_link = data.get("problem_link")
+    explanation = data.get("explanation")
+
+    if not topic_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Topic is required",
+        )
+
+    if not company_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Company is required",
+        )
+
+    if not question_text:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Problem title is required",
+        )
+
+    if not problem_link:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Problem link is required",
+        )
+
+    # Check topic
+    result = await db.execute(
+        select(Topic).where(
+            Topic.id == topic_id,
+            Topic.is_active == True,
+        )
+    )
+
+    topic = result.scalar_one_or_none()
+
+    if not topic:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Topic not found or inactive",
+        )
+
+    # Check company
+    result = await db.execute(
+        select(Company).where(
+            Company.id == company_id,
+            Company.is_active == True,
+        )
+    )
+
+    company = result.scalar_one_or_none()
+
+    if not company:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Company not found or inactive",
+        )
+
+    question = Question(
+        topic_id=topic_id,
+        company_id=company_id,
+        question_text=question_text,
+        difficulty=difficulty,
+        question_type="coding",
+        source_type="dsa",
+        problem_link=problem_link,
+        explanation=explanation,
+        is_active=True,
+    )
+
+    db.add(question)
+
+    await db.commit()
+
+    result = await db.execute(
+        select(Question)
+        .options(
+            selectinload(Question.company),
+            selectinload(Question.topic),
+        )
+        .where(Question.id == question.id)
+    )
+
+    question = result.scalar_one()
+
+    return {
+        "id": question.id,
+        "title": question.question_text,
+        "company": (
+            question.company.name
+            if question.company
+            else "Unknown"
+        ),
+        "company_id": question.company_id,
+        "topic": (
+            question.topic.name
+            if question.topic
+            else "Unknown"
+        ),
+        "topic_id": question.topic_id,
+        "difficulty": question.difficulty,
+        "link": question.problem_link,
+        "explanation": question.explanation,
+        "is_active": question.is_active,
+    }
+
+
+# =========================
+# GET DSA QUESTIONS - ADMIN
+# =========================
+
+@router.get("/dsa")
+async def get_admin_dsa_questions(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    require_admin(current_user)
+
+    result = await db.execute(
+        select(Question)
+        .options(
+            selectinload(Question.company),
+            selectinload(Question.topic),
+        )
+        .where(
+            Question.source_type == "dsa"
+        )
+        .order_by(
+            Question.id.desc()
+        )
+    )
+
+    questions = result.scalars().all()
+
+    return [
+        {
+            "id": question.id,
+            "title": question.question_text,
+            "company": (
+                question.company.name
+                if question.company
+                else "Unknown"
+            ),
+            "company_id": question.company_id,
+            "topic": (
+                question.topic.name
+                if question.topic
+                else "Unknown"
+            ),
+            "topic_id": question.topic_id,
+            "difficulty": question.difficulty,
+            "link": question.problem_link,
+            "explanation": question.explanation,
+            "is_active": question.is_active,
+        }
+        for question in questions
+    ]
+
+
+# =========================
+# UPDATE DSA QUESTION
+# =========================
+
+@router.patch("/dsa/{question_id}")
+async def update_dsa_question(
+    question_id: int,
+    data: dict,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    require_admin(current_user)
+
+    result = await db.execute(
+        select(Question).where(
+            Question.id == question_id,
+            Question.source_type == "dsa",
+        )
+    )
+
+    question = result.scalar_one_or_none()
+
+    if not question:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="DSA question not found",
+        )
+
+    if data.get("topic_id") is not None:
+        result = await db.execute(
+            select(Topic).where(
+                Topic.id == data["topic_id"],
+                Topic.is_active == True,
+            )
+        )
+
+        topic = result.scalar_one_or_none()
+
+        if not topic:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Topic not found or inactive",
+            )
+
+        question.topic_id = data["topic_id"]
+
+    if data.get("company_id") is not None:
+        result = await db.execute(
+            select(Company).where(
+                Company.id == data["company_id"],
+                Company.is_active == True,
+            )
+        )
+
+        company = result.scalar_one_or_none()
+
+        if not company:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Company not found or inactive",
+            )
+
+        question.company_id = data["company_id"]
+
+    if data.get("question_text") is not None:
+        question.question_text = data["question_text"]
+
+    if data.get("difficulty") is not None:
+        question.difficulty = data["difficulty"]
+
+    if data.get("problem_link") is not None:
+        question.problem_link = data["problem_link"]
+
+    if "explanation" in data:
+        question.explanation = data["explanation"]
+
+    if data.get("is_active") is not None:
+        question.is_active = data["is_active"]
+
+    await db.commit()
+
+    result = await db.execute(
+        select(Question)
+        .options(
+            selectinload(Question.company),
+            selectinload(Question.topic),
+        )
+        .where(Question.id == question.id)
+    )
+
+    question = result.scalar_one()
+
+    return {
+        "id": question.id,
+        "title": question.question_text,
+        "company": (
+            question.company.name
+            if question.company
+            else "Unknown"
+        ),
+        "company_id": question.company_id,
+        "topic": (
+            question.topic.name
+            if question.topic
+            else "Unknown"
+        ),
+        "topic_id": question.topic_id,
+        "difficulty": question.difficulty,
+        "link": question.problem_link,
+        "explanation": question.explanation,
+        "is_active": question.is_active,
+    }
+
+
+# =========================
+# DELETE / DEACTIVATE DSA
+# =========================
+
+@router.delete("/dsa/{question_id}")
+async def delete_dsa_question(
+    question_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    require_admin(current_user)
+
+    result = await db.execute(
+        select(Question).where(
+            Question.id == question_id,
+            Question.source_type == "dsa",
+        )
+    )
+
+    question = result.scalar_one_or_none()
+
+    if not question:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="DSA question not found",
+        )
+
+    question.is_active = False
+
+    await db.commit()
+
+    return {
+        "message": "DSA question deactivated successfully"
+    }
