@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import {
   AlertCircle,
   Check,
-  ChevronDown,
   Edit3,
   Filter,
   Loader2,
@@ -262,19 +261,35 @@ const AdminQuestions = () => {
   };
 
   const getSubtopicName = (subtopicId) => {
+    if (!subtopicId) {
+      return "No subtopic";
+    }
+
     const subtopic = subtopics.find(
       (item) =>
         Number(item.id) ===
         Number(subtopicId)
     );
 
-    return subtopic?.name ||
-      `Subtopic #${subtopicId}`;
+    return (
+      subtopic?.name ||
+      `Subtopic #${subtopicId}`
+    );
   };
 
-  const openCreateModal = async () => {
+  const openCreateModal = () => {
     setEditingId(null);
-    setForm(initialForm);
+
+    setForm({
+      ...initialForm,
+      options: [
+        emptyOption("A"),
+        emptyOption("B"),
+        emptyOption("C"),
+        emptyOption("D"),
+      ],
+    });
+
     setSubtopics([]);
     setError("");
     setSuccess("");
@@ -294,7 +309,12 @@ const AdminQuestions = () => {
           ? question.options
           : [];
 
-      const labels = ["A", "B", "C", "D"];
+      const labels = [
+        "A",
+        "B",
+        "C",
+        "D",
+      ];
 
       const normalizedOptions =
         labels.map((label) => {
@@ -311,7 +331,9 @@ const AdminQuestions = () => {
             option_text:
               existing?.option_text || "",
             is_correct:
-              Boolean(existing?.is_correct),
+              Boolean(
+                existing?.is_correct
+              ),
           };
         });
 
@@ -327,7 +349,8 @@ const AdminQuestions = () => {
         question_type:
           question.question_type || "mcq",
         source_type:
-          question.source_type || "practice",
+          question.source_type ||
+          "practice",
         company_year:
           question.company_year ?? "",
         explanation:
@@ -343,6 +366,11 @@ const AdminQuestions = () => {
       setSuccess("");
       setShowModal(true);
     } catch (err) {
+      console.error(
+        "Failed to open question:",
+        err
+      );
+
       setError(
         err.message ||
           "Failed to open question"
@@ -355,18 +383,33 @@ const AdminQuestions = () => {
 
     setShowModal(false);
     setEditingId(null);
-    setForm(initialForm);
+
+    setForm({
+      ...initialForm,
+      options: [
+        emptyOption("A"),
+        emptyOption("B"),
+        emptyOption("C"),
+        emptyOption("D"),
+      ],
+    });
+
     setSubtopics([]);
   };
 
-  const handleFormChange = (field, value) => {
+  const handleFormChange = (
+    field,
+    value
+  ) => {
     setForm((prev) => ({
       ...prev,
       [field]: value,
     }));
   };
 
-  const handleTopicChange = async (value) => {
+  const handleTopicChange = async (
+    value
+  ) => {
     setForm((prev) => ({
       ...prev,
       topic_id: value,
@@ -412,10 +455,6 @@ const AdminQuestions = () => {
   const validateForm = () => {
     if (!form.topic_id) {
       return "Please select a topic";
-    }
-
-    if (!form.subtopic_id) {
-      return "Please select a subtopic";
     }
 
     if (!form.question_text.trim()) {
@@ -465,28 +504,39 @@ const AdminQuestions = () => {
 
     return {
       topic_id: Number(form.topic_id),
-      subtopic_id: Number(
-        form.subtopic_id
-      ),
+
+      subtopic_id:
+        form.subtopic_id === ""
+          ? null
+          : Number(form.subtopic_id),
+
       question_text:
         form.question_text.trim(),
+
       difficulty: Number(
         form.difficulty
       ),
+
       question_type:
         form.question_type,
+
       source_type:
         form.source_type,
+
       company_year:
         form.company_year === ""
           ? null
           : Number(form.company_year),
+
       explanation:
         form.explanation.trim() || null,
+
       shortcut:
         form.shortcut.trim() || null,
+
       solution_steps:
         form.solution_steps.trim() || null,
+
       options,
     };
   };
@@ -532,7 +582,17 @@ const AdminQuestions = () => {
 
       setShowModal(false);
       setEditingId(null);
-      setForm(initialForm);
+
+      setForm({
+        ...initialForm,
+        options: [
+          emptyOption("A"),
+          emptyOption("B"),
+          emptyOption("C"),
+          emptyOption("D"),
+        ],
+      });
+
       setSubtopics([]);
     } catch (err) {
       console.error(
@@ -562,7 +622,9 @@ const AdminQuestions = () => {
     }
   };
 
-  const handleDelete = async (question) => {
+  const handleDelete = async (
+    question
+  ) => {
     const confirmed =
       window.confirm(
         "Deactivate this question?"
@@ -611,7 +673,9 @@ const AdminQuestions = () => {
     setSearch("");
   };
 
-  const handleFilterTopic = async (value) => {
+  const handleFilterTopic = async (
+    value
+  ) => {
     setFilters((prev) => ({
       ...prev,
       topic_id: value,
@@ -635,7 +699,10 @@ const AdminQuestions = () => {
       );
   };
 
-  if (loading && questions.length === 0) {
+  if (
+    loading &&
+    questions.length === 0
+  ) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
         <div className="flex flex-col items-center gap-3 text-slate-600">
@@ -643,6 +710,7 @@ const AdminQuestions = () => {
             size={32}
             className="animate-spin"
           />
+
           <p className="text-sm">
             Loading questions...
           </p>
@@ -653,7 +721,7 @@ const AdminQuestions = () => {
 
   return (
     <div className="space-y-6 p-4 sm:p-6 lg:p-8">
-      {/* Header */}
+      {/* HEADER */}
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <p className="text-sm font-medium text-slate-500">
@@ -689,7 +757,7 @@ const AdminQuestions = () => {
         </div>
       </div>
 
-      {/* Alerts */}
+      {/* ALERTS */}
       {error && !showModal && (
         <div className="flex items-start gap-3 rounded-2xl border border-red-200 bg-red-50 p-4 text-red-700">
           <AlertCircle
@@ -716,7 +784,7 @@ const AdminQuestions = () => {
         </div>
       )}
 
-      {/* Search + Filters */}
+      {/* FILTERS */}
       <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
         <div className="mb-4 flex items-center gap-2">
           <Filter
@@ -730,7 +798,6 @@ const AdminQuestions = () => {
         </div>
 
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
-          {/* Search */}
           <div className="relative md:col-span-2">
             <Search
               size={18}
@@ -744,11 +811,11 @@ const AdminQuestions = () => {
                 setPage(1);
               }}
               placeholder="Search question..."
-              className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-10 pr-3 text-sm outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
+              className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-10 pr-3 text-sm font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
             />
           </div>
 
-          {/* Topic */}
+          {/* TOPIC FILTER */}
           <select
             value={filters.topic_id}
             onChange={(e) =>
@@ -756,9 +823,12 @@ const AdminQuestions = () => {
                 e.target.value
               )
             }
-            className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-slate-400"
+            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-900 outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
           >
-            <option value="">
+            <option
+              value=""
+              className="bg-white text-slate-900"
+            >
               All Topics
             </option>
 
@@ -766,13 +836,14 @@ const AdminQuestions = () => {
               <option
                 key={topic.id}
                 value={topic.id}
+                className="bg-white text-slate-900"
               >
                 {topic.name}
               </option>
             ))}
           </select>
 
-          {/* Subtopic */}
+          {/* SUBTOPIC FILTER */}
           <select
             value={filters.subtopic_id}
             onChange={(e) =>
@@ -783,9 +854,12 @@ const AdminQuestions = () => {
               }))
             }
             disabled={!filters.topic_id}
-            className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none disabled:cursor-not-allowed disabled:bg-slate-50 focus:border-slate-400"
+            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-900 outline-none disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400 focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
           >
-            <option value="">
+            <option
+              value=""
+              className="bg-white text-slate-900"
+            >
               All Subtopics
             </option>
 
@@ -793,13 +867,14 @@ const AdminQuestions = () => {
               <option
                 key={subtopic.id}
                 value={subtopic.id}
+                className="bg-white text-slate-900"
               >
                 {subtopic.name}
               </option>
             ))}
           </select>
 
-          {/* Difficulty */}
+          {/* DIFFICULTY FILTER */}
           <select
             value={filters.difficulty}
             onChange={(e) =>
@@ -809,23 +884,38 @@ const AdminQuestions = () => {
                   e.target.value,
               }))
             }
-            className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-slate-400"
+            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-900 outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
           >
-            <option value="">
+            <option
+              value=""
+              className="bg-white text-slate-900"
+            >
               All Difficulties
             </option>
-            <option value="1">
+
+            <option
+              value="1"
+              className="bg-white text-slate-900"
+            >
               Easy
             </option>
-            <option value="2">
+
+            <option
+              value="2"
+              className="bg-white text-slate-900"
+            >
               Medium
             </option>
-            <option value="3">
+
+            <option
+              value="3"
+              className="bg-white text-slate-900"
+            >
               Hard
             </option>
           </select>
 
-          {/* Source */}
+          {/* SOURCE FILTER */}
           <select
             value={filters.source_type}
             onChange={(e) =>
@@ -835,26 +925,45 @@ const AdminQuestions = () => {
                   e.target.value,
               }))
             }
-            className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-slate-400"
+            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-900 outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
           >
-            <option value="">
+            <option
+              value=""
+              className="bg-white text-slate-900"
+            >
               All Sources
             </option>
-            <option value="practice">
+
+            <option
+              value="practice"
+              className="bg-white text-slate-900"
+            >
               Practice
             </option>
-            <option value="company">
+
+            <option
+              value="company"
+              className="bg-white text-slate-900"
+            >
               Company
             </option>
-            <option value="interview">
+
+            <option
+              value="interview"
+              className="bg-white text-slate-900"
+            >
               Interview
             </option>
-            <option value="previous_year">
+
+            <option
+              value="previous_year"
+              className="bg-white text-slate-900"
+            >
               Previous Year
             </option>
           </select>
 
-          {/* Company Year */}
+          {/* COMPANY YEAR FILTER */}
           <input
             type="number"
             placeholder="Company year"
@@ -866,10 +975,10 @@ const AdminQuestions = () => {
                   e.target.value,
               }))
             }
-            className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-slate-400"
+            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-900 outline-none placeholder:text-slate-400 focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
           />
 
-          {/* Status */}
+          {/* STATUS FILTER */}
           <select
             value={filters.is_active}
             onChange={(e) =>
@@ -879,15 +988,26 @@ const AdminQuestions = () => {
                   e.target.value,
               }))
             }
-            className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-slate-400"
+            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-900 outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
           >
-            <option value="true">
+            <option
+              value="true"
+              className="bg-white text-slate-900"
+            >
               Active
             </option>
-            <option value="false">
+
+            <option
+              value="false"
+              className="bg-white text-slate-900"
+            >
               Inactive
             </option>
-            <option value="">
+
+            <option
+              value=""
+              className="bg-white text-slate-900"
+            >
               All Status
             </option>
           </select>
@@ -908,7 +1028,7 @@ const AdminQuestions = () => {
         </div>
       </div>
 
-      {/* Questions */}
+      {/* QUESTION BANK */}
       <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
         <div className="flex items-center justify-between border-b border-slate-100 px-4 py-4 sm:px-5">
           <div>
@@ -927,7 +1047,7 @@ const AdminQuestions = () => {
           </div>
         </div>
 
-        {/* Desktop */}
+        {/* DESKTOP */}
         <div className="hidden overflow-x-auto md:block">
           <table className="w-full min-w-[900px] text-left">
             <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
@@ -935,21 +1055,27 @@ const AdminQuestions = () => {
                 <th className="px-5 py-3">
                   ID
                 </th>
+
                 <th className="px-5 py-3">
                   Question
                 </th>
+
                 <th className="px-5 py-3">
                   Topic
                 </th>
+
                 <th className="px-5 py-3">
                   Difficulty
                 </th>
+
                 <th className="px-5 py-3">
                   Source
                 </th>
+
                 <th className="px-5 py-3">
                   Status
                 </th>
+
                 <th className="px-5 py-3 text-right">
                   Actions
                 </th>
@@ -1068,7 +1194,7 @@ const AdminQuestions = () => {
           </table>
         </div>
 
-        {/* Mobile */}
+        {/* MOBILE */}
         <div className="divide-y divide-slate-100 md:hidden">
           {paginatedQuestions.map(
             (question) => (
@@ -1103,6 +1229,7 @@ const AdminQuestions = () => {
                     <p className="text-slate-400">
                       Topic
                     </p>
+
                     <p className="mt-1 font-medium text-slate-700">
                       {getTopicName(
                         question.topic_id
@@ -1114,6 +1241,7 @@ const AdminQuestions = () => {
                     <p className="text-slate-400">
                       Difficulty
                     </p>
+
                     <p className="mt-1 font-medium text-slate-700">
                       {difficultyLabel[
                         question.difficulty
@@ -1126,6 +1254,7 @@ const AdminQuestions = () => {
                     <p className="text-slate-400">
                       Source
                     </p>
+
                     <p className="mt-1 font-medium text-slate-700">
                       {formatSource(
                         question.source_type
@@ -1137,6 +1266,7 @@ const AdminQuestions = () => {
                     <p className="text-slate-400">
                       Options
                     </p>
+
                     <p className="mt-1 font-medium text-slate-700">
                       {Array.isArray(
                         question.options
@@ -1199,7 +1329,7 @@ const AdminQuestions = () => {
           </div>
         )}
 
-        {/* Pagination */}
+        {/* PAGINATION */}
         {filteredQuestions.length >
           pageSize && (
           <div className="flex items-center justify-between border-t border-slate-100 px-4 py-4">
@@ -1212,7 +1342,10 @@ const AdminQuestions = () => {
                 disabled={page === 1}
                 onClick={() =>
                   setPage((prev) =>
-                    Math.max(1, prev - 1)
+                    Math.max(
+                      1,
+                      prev - 1
+                    )
                   )
                 }
                 className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 disabled:cursor-not-allowed disabled:opacity-40"
@@ -1241,11 +1374,11 @@ const AdminQuestions = () => {
         )}
       </div>
 
-      {/* Modal */}
+      {/* CREATE / EDIT MODAL */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-3 sm:p-5">
           <div className="flex max-h-[95vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
-            {/* Modal Header */}
+            {/* MODAL HEADER */}
             <div className="flex items-center justify-between border-b border-slate-100 px-4 py-4 sm:px-6">
               <div>
                 <h2 className="text-lg font-bold text-slate-900 sm:text-xl">
@@ -1261,6 +1394,7 @@ const AdminQuestions = () => {
               </div>
 
               <button
+                type="button"
                 onClick={closeModal}
                 className="rounded-xl p-2 text-slate-500 transition hover:bg-slate-100"
               >
@@ -1268,7 +1402,7 @@ const AdminQuestions = () => {
               </button>
             </div>
 
-            {/* Modal Body */}
+            {/* FORM */}
             <form
               onSubmit={handleSubmit}
               className="overflow-y-auto p-4 sm:p-6"
@@ -1287,8 +1421,9 @@ const AdminQuestions = () => {
               )}
 
               <div className="space-y-5">
-                {/* Basic */}
+                {/* BASIC DETAILS */}
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  {/* TOPIC */}
                   <div>
                     <label className="mb-1.5 block text-sm font-semibold text-slate-700">
                       Topic *
@@ -1302,9 +1437,12 @@ const AdminQuestions = () => {
                           e.target.value
                         )
                       }
-                      className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-slate-400"
+                      className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
                     >
-                      <option value="">
+                      <option
+                        value=""
+                        className="bg-white text-slate-900"
+                      >
                         Select topic
                       </option>
 
@@ -1313,6 +1451,7 @@ const AdminQuestions = () => {
                           <option
                             key={topic.id}
                             value={topic.id}
+                            className="bg-white text-slate-900"
                           >
                             {topic.name}
                           </option>
@@ -1321,13 +1460,13 @@ const AdminQuestions = () => {
                     </select>
                   </div>
 
+                  {/* SUBTOPIC */}
                   <div>
                     <label className="mb-1.5 block text-sm font-semibold text-slate-700">
-                      Subtopic *
+                      Subtopic (Optional)
                     </label>
 
                     <select
-                      required
                       value={
                         form.subtopic_id
                       }
@@ -1340,10 +1479,13 @@ const AdminQuestions = () => {
                       disabled={
                         !form.topic_id
                       }
-                      className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none disabled:bg-slate-50 focus:border-slate-400"
+                      className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-900 outline-none disabled:bg-slate-50 disabled:text-slate-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
                     >
-                      <option value="">
-                        Select subtopic
+                      <option
+                        value=""
+                        className="bg-white text-slate-900"
+                      >
+                        No subtopic
                       </option>
 
                       {subtopics.map(
@@ -1355,14 +1497,20 @@ const AdminQuestions = () => {
                             value={
                               subtopic.id
                             }
+                            className="bg-white text-slate-900"
                           >
                             {subtopic.name}
                           </option>
                         )
                       )}
                     </select>
+
+                    <p className="mt-1 text-[11px] text-slate-400">
+                      You can leave this empty.
+                    </p>
                   </div>
 
+                  {/* DIFFICULTY */}
                   <div>
                     <label className="mb-1.5 block text-sm font-semibold text-slate-700">
                       Difficulty *
@@ -1380,20 +1528,32 @@ const AdminQuestions = () => {
                           )
                         )
                       }
-                      className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-slate-400"
+                      className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
                     >
-                      <option value={1}>
+                      <option
+                        value={1}
+                        className="bg-white text-slate-900"
+                      >
                         Easy
                       </option>
-                      <option value={2}>
+
+                      <option
+                        value={2}
+                        className="bg-white text-slate-900"
+                      >
                         Medium
                       </option>
-                      <option value={3}>
+
+                      <option
+                        value={3}
+                        className="bg-white text-slate-900"
+                      >
                         Hard
                       </option>
                     </select>
                   </div>
 
+                  {/* QUESTION TYPE */}
                   <div>
                     <label className="mb-1.5 block text-sm font-semibold text-slate-700">
                       Question Type
@@ -1409,17 +1569,25 @@ const AdminQuestions = () => {
                           e.target.value
                         )
                       }
-                      className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-slate-400"
+                      className="w-full appearance-auto rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
                     >
-                      <option value="mcq">
+                      <option
+                        value="mcq"
+                        className="bg-white text-slate-900"
+                      >
                         MCQ
                       </option>
-                      <option value="single_choice">
+
+                      <option
+                        value="single_choice"
+                        className="bg-white text-slate-900"
+                      >
                         Single Choice
                       </option>
                     </select>
                   </div>
 
+                  {/* SOURCE TYPE */}
                   <div>
                     <label className="mb-1.5 block text-sm font-semibold text-slate-700">
                       Source Type
@@ -1435,26 +1603,42 @@ const AdminQuestions = () => {
                           e.target.value
                         )
                       }
-                      className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-slate-400"
+                      className="w-full appearance-auto rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
                     >
-                      <option value="practice">
+                      <option
+                        value="practice"
+                        className="bg-white text-slate-900"
+                      >
                         Practice
                       </option>
-                      <option value="company">
+
+                      <option
+                        value="company"
+                        className="bg-white text-slate-900"
+                      >
                         Company
                       </option>
-                      <option value="interview">
+
+                      <option
+                        value="interview"
+                        className="bg-white text-slate-900"
+                      >
                         Interview
                       </option>
-                      <option value="previous_year">
+
+                      <option
+                        value="previous_year"
+                        className="bg-white text-slate-900"
+                      >
                         Previous Year
                       </option>
                     </select>
                   </div>
 
+                  {/* COMPANY YEAR */}
                   <div>
                     <label className="mb-1.5 block text-sm font-semibold text-slate-700">
-                      Company Year
+                      Company Year (Optional)
                     </label>
 
                     <input
@@ -1471,12 +1655,12 @@ const AdminQuestions = () => {
                         )
                       }
                       placeholder="e.g. 2025"
-                      className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-slate-400"
+                      className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-900 outline-none placeholder:text-slate-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
                     />
                   </div>
                 </div>
 
-                {/* Question */}
+                {/* QUESTION */}
                 <div>
                   <label className="mb-1.5 block text-sm font-semibold text-slate-700">
                     Question *
@@ -1495,23 +1679,21 @@ const AdminQuestions = () => {
                       )
                     }
                     placeholder="Write the question here..."
-                    className="w-full resize-y rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
+                    className="w-full resize-y rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm font-medium text-slate-900 outline-none placeholder:text-slate-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
                   />
                 </div>
 
-                {/* Options */}
+                {/* OPTIONS */}
                 <div>
-                  <div className="mb-3 flex items-center justify-between">
-                    <div>
-                      <h3 className="text-sm font-bold text-slate-900">
-                        Answer Options
-                      </h3>
+                  <div className="mb-3">
+                    <h3 className="text-sm font-bold text-slate-900">
+                      Answer Options
+                    </h3>
 
-                      <p className="mt-1 text-xs text-slate-500">
-                        Select exactly one correct
-                        answer.
-                      </p>
-                    </div>
+                    <p className="mt-1 text-xs text-slate-500">
+                      Select exactly one correct
+                      answer.
+                    </p>
                   </div>
 
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -1543,7 +1725,6 @@ const AdminQuestions = () => {
                                   ? "bg-emerald-600 text-white"
                                   : "bg-slate-100 text-slate-600 hover:bg-slate-200"
                               }`}
-                              title="Mark as correct"
                             >
                               {option.is_correct
                                 ? "✓"
@@ -1551,21 +1732,19 @@ const AdminQuestions = () => {
                             </button>
 
                             <input
+                              type="text"
                               value={
                                 option.option_text
                               }
-                              onChange={(
-                                e
-                              ) =>
+                              onChange={(e) =>
                                 handleOptionChange(
                                   index,
                                   "option_text",
-                                  e.target
-                                    .value
+                                  e.target.value
                                 )
                               }
                               placeholder={`Option ${option.option_label}`}
-                              className="min-w-0 flex-1 rounded-lg border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-slate-400"
+                              className="min-w-0 flex-1 rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-900 outline-none placeholder:text-slate-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
                             />
                           </div>
                         </div>
@@ -1574,11 +1753,11 @@ const AdminQuestions = () => {
                   </div>
                 </div>
 
-                {/* Explanation */}
+                {/* EXPLANATION + SHORTCUT */}
                 <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                   <div>
                     <label className="mb-1.5 block text-sm font-semibold text-slate-700">
-                      Explanation
+                      Explanation (Optional)
                     </label>
 
                     <textarea
@@ -1593,18 +1772,20 @@ const AdminQuestions = () => {
                         )
                       }
                       placeholder="Explain why the answer is correct..."
-                      className="w-full resize-y rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-slate-400"
+                      className="w-full resize-y rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm font-medium text-slate-900 outline-none placeholder:text-slate-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
                     />
                   </div>
 
                   <div>
                     <label className="mb-1.5 block text-sm font-semibold text-slate-700">
-                      Shortcut
+                      Shortcut (Optional)
                     </label>
 
                     <textarea
                       rows={4}
-                      value={form.shortcut}
+                      value={
+                        form.shortcut
+                      }
                       onChange={(e) =>
                         handleFormChange(
                           "shortcut",
@@ -1612,15 +1793,15 @@ const AdminQuestions = () => {
                         )
                       }
                       placeholder="Add a shortcut or quick trick..."
-                      className="w-full resize-y rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-slate-400"
+                      className="w-full resize-y rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm font-medium text-slate-900 outline-none placeholder:text-slate-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
                     />
                   </div>
                 </div>
 
-                {/* Solution */}
+                {/* SOLUTION */}
                 <div>
                   <label className="mb-1.5 block text-sm font-semibold text-slate-700">
-                    Solution Steps
+                    Solution Steps (Optional)
                   </label>
 
                   <textarea
@@ -1635,12 +1816,12 @@ const AdminQuestions = () => {
                       )
                     }
                     placeholder="Write the complete solution steps..."
-                    className="w-full resize-y rounded-xl border border-slate-200 px-3 py-3 text-sm outline-none focus:border-slate-400"
+                    className="w-full resize-y rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm font-medium text-slate-900 outline-none placeholder:text-slate-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
                   />
                 </div>
               </div>
 
-              {/* Footer */}
+              {/* FOOTER */}
               <div className="mt-6 flex flex-col-reverse gap-3 border-t border-slate-100 pt-5 sm:flex-row sm:justify-end">
                 <button
                   type="button"
@@ -1667,6 +1848,7 @@ const AdminQuestions = () => {
                   ) : (
                     <>
                       <Check size={17} />
+
                       {editingId
                         ? "Update Question"
                         : "Create Question"}

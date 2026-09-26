@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+
 import {
   CheckCircle2,
   XCircle,
@@ -10,9 +11,16 @@ import {
   ArrowUpRight,
   Sparkles,
 } from "lucide-react";
+
 import { getDashboard } from "../services/dashboardApi";
 
-function StatCard({ icon: Icon, title, value, subtitle, iconClass }) {
+function StatCard({
+  icon: Icon,
+  title,
+  value,
+  subtitle,
+  iconClass,
+}) {
   return (
     <div className="group relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
       <div className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-slate-100 opacity-0 transition-all duration-500 group-hover:scale-150 group-hover:opacity-100" />
@@ -54,7 +62,9 @@ function ProgressBar({ value }) {
     <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100">
       <div
         className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-violet-500 transition-all duration-1000 ease-out"
-        style={{ width: `${percentage}%` }}
+        style={{
+          width: `${percentage}%`,
+        }}
       />
     </div>
   );
@@ -115,33 +125,57 @@ function Dashboard() {
     );
   }
 
+  const topicProgress =
+    dashboard?.topic_progress || [];
+
+  const recentAttempts =
+    dashboard?.recent_attempts || [];
+
   /*
-   * Backend response:
-   *
-   * user_name
-   * total_questions_solved
-   * correct_answers
-   * wrong_answers
-   * accuracy
-   * streak_days
-   * topic_progress
-   * recent_attempts
+   * Sort attempts by latest attempted_at
+   * and show only latest 4.
    */
+  const latestAttempts = [
+    ...recentAttempts,
+  ]
+    .sort((a, b) => {
+      const dateA = new Date(
+        a.attempted_at || 0
+      ).getTime();
 
-  const topicProgress = dashboard?.topic_progress || [];
-  const recentAttempts = dashboard?.recent_attempts || [];
+      const dateB = new Date(
+        b.attempted_at || 0
+      ).getTime();
 
-  const accuracy = Number(dashboard?.accuracy) || 0;
+      return dateB - dateA;
+    })
+    .slice(0, 4);
+
+  const accuracy =
+    Number(dashboard?.accuracy) || 0;
+
   const solved =
-    Number(dashboard?.total_questions_solved) || 0;
-  const correct =
-    Number(dashboard?.correct_answers) || 0;
-  const wrong =
-    Number(dashboard?.wrong_answers) || 0;
-  const streak =
-    Number(dashboard?.streak_days) || 0;
+    Number(
+      dashboard?.total_questions_solved
+    ) || 0;
 
-  const userName = dashboard?.user_name || "Learner";
+  const correct =
+    Number(
+      dashboard?.correct_answers
+    ) || 0;
+
+  const wrong =
+    Number(
+      dashboard?.wrong_answers
+    ) || 0;
+
+  const streak =
+    Number(
+      dashboard?.streak_days
+    ) || 0;
+
+  const userName =
+    dashboard?.user_name || "Learner";
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-900">
@@ -164,9 +198,7 @@ function Dashboard() {
 
           <div className="relative flex flex-col gap-8 md:flex-row md:items-center md:justify-between">
 
-            <div
-              className="animate-[fadeIn_0.7s_ease-out]"
-            >
+            <div className="animate-[fadeIn_0.7s_ease-out]">
               <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs backdrop-blur">
                 <Sparkles size={14} />
                 Keep learning, keep growing
@@ -177,9 +209,9 @@ function Dashboard() {
               </h1>
 
               <p className="mt-3 max-w-xl text-sm leading-6 text-indigo-100 sm:text-base">
-                Your preparation journey continues. Stay
-                consistent and turn your daily practice into
-                progress.
+                Your preparation journey continues.
+                Stay consistent and turn your daily
+                practice into progress.
               </p>
             </div>
 
@@ -270,44 +302,46 @@ function Dashboard() {
                   />
 
                   <p className="mt-3 text-sm text-slate-500">
-                    Start solving questions to see your topic
-                    progress.
+                    Start solving questions to see
+                    your topic progress.
                   </p>
                 </div>
               ) : (
-                topicProgress.map((topic, index) => (
-                  <div
-                    key={`${topic.topic_id}-${index}`}
-                    className="group rounded-xl p-3 transition-colors duration-200 hover:bg-slate-50"
-                  >
-                    <div className="flex items-center justify-between gap-4">
+                topicProgress.map(
+                  (topic, index) => (
+                    <div
+                      key={`${topic.topic_id}-${index}`}
+                      className="group rounded-xl p-3 transition-colors duration-200 hover:bg-slate-50"
+                    >
+                      <div className="flex items-center justify-between gap-4">
 
-                      <div className="min-w-0">
-                        <p className="truncate font-semibold text-slate-800">
-                          {topic.topic_name}
-                        </p>
+                        <div className="min-w-0">
+                          <p className="truncate font-semibold text-slate-800">
+                            {topic.topic_name}
+                          </p>
 
-                        <p className="mt-1 text-xs text-slate-400">
-                          {topic.questions_solved} questions
-                          {" • "}
-                          {topic.correct_answers} correct
-                        </p>
+                          <p className="mt-1 text-xs text-slate-400">
+                            {topic.questions_solved} questions
+                            {" • "}
+                            {topic.correct_answers} correct
+                          </p>
+                        </div>
+
+                        <span className="shrink-0 text-sm font-bold text-indigo-600">
+                          {Math.round(
+                            Number(topic.accuracy) || 0
+                          )}
+                          %
+                        </span>
+
                       </div>
 
-                      <span className="shrink-0 text-sm font-bold text-indigo-600">
-                        {Math.round(
-                          Number(topic.accuracy) || 0
-                        )}
-                        %
-                      </span>
-
+                      <ProgressBar
+                        value={topic.accuracy}
+                      />
                     </div>
-
-                    <ProgressBar
-                      value={topic.accuracy}
-                    />
-                  </div>
-                ))
+                  )
+                )
               )}
 
             </div>
@@ -381,7 +415,10 @@ function Dashboard() {
           </div>
         </section>
 
+        {/* ========================================= */}
         {/* Recent Attempts */}
+        {/* ========================================= */}
+
         <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
 
           <div className="flex items-center justify-between">
@@ -391,7 +428,7 @@ function Dashboard() {
               </h2>
 
               <p className="mt-1 text-sm text-slate-500">
-                Your latest practice activity
+                Your latest practice attempts
               </p>
             </div>
 
@@ -401,9 +438,9 @@ function Dashboard() {
             />
           </div>
 
-          <div className="mt-5 overflow-x-auto">
+          <div className="mt-5">
 
-            {recentAttempts.length === 0 ? (
+            {latestAttempts.length === 0 ? (
               <div className="rounded-xl border border-dashed border-slate-200 p-8 text-center">
                 <Clock3
                   className="mx-auto text-slate-300"
@@ -417,52 +454,54 @@ function Dashboard() {
             ) : (
               <div className="space-y-2">
 
-                {recentAttempts.map((attempt, index) => (
-                  <div
-                    key={`${attempt.id}-${index}`}
-                    className="group flex items-center justify-between rounded-xl p-4 transition-all duration-200 hover:bg-slate-50"
-                  >
+                {latestAttempts.map(
+                  (attempt, index) => (
+                    <div
+                      key={`${attempt.id}-${index}`}
+                      className="group flex items-center justify-between rounded-xl p-4 transition-all duration-200 hover:bg-slate-50"
+                    >
 
-                    <div className="flex min-w-0 items-center gap-3">
+                      <div className="flex min-w-0 items-center gap-3">
 
-                      <div
-                        className={`rounded-xl p-2 ${
-                          attempt.is_correct
-                            ? "bg-emerald-50 text-emerald-600"
-                            : "bg-rose-50 text-rose-600"
-                        }`}
-                      >
-                        {attempt.is_correct ? (
-                          <CheckCircle2 size={19} />
-                        ) : (
-                          <XCircle size={19} />
-                        )}
+                        <div
+                          className={`rounded-xl p-2 ${
+                            attempt.is_correct
+                              ? "bg-emerald-50 text-emerald-600"
+                              : "bg-rose-50 text-rose-600"
+                          }`}
+                        >
+                          {attempt.is_correct ? (
+                            <CheckCircle2 size={19} />
+                          ) : (
+                            <XCircle size={19} />
+                          )}
+                        </div>
+
+                        <div className="min-w-0">
+                          <p className="truncate font-medium text-slate-800">
+                            {attempt.question_text ||
+                              `Question #${attempt.question_id}`}
+                          </p>
+
+                          <p className="mt-1 text-xs text-slate-400">
+                            {attempt.attempted_at
+                              ? new Date(
+                                  attempt.attempted_at
+                                ).toLocaleString()
+                              : "Recently attempted"}
+                          </p>
+                        </div>
+
                       </div>
 
-                      <div className="min-w-0">
-                        <p className="truncate font-medium text-slate-800">
-                          {attempt.question_text ||
-                            `Question #${attempt.question_id}`}
-                        </p>
-
-                        <p className="mt-1 text-xs text-slate-400">
-                          {attempt.attempted_at
-                            ? new Date(
-                                attempt.attempted_at
-                              ).toLocaleString()
-                            : "Recently attempted"}
-                        </p>
-                      </div>
+                      <ArrowUpRight
+                        size={18}
+                        className="shrink-0 text-slate-300 transition-transform duration-200 group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
+                      />
 
                     </div>
-
-                    <ArrowUpRight
-                      size={18}
-                      className="shrink-0 text-slate-300 transition-transform duration-200 group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
-                    />
-
-                  </div>
-                ))}
+                  )
+                )}
 
               </div>
             )}
