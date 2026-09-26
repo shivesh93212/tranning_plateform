@@ -27,9 +27,8 @@ app.add_middleware(
 )
 
 app.include_router(
-    admin.router,
-    prefix="/admin",
-    tags=["Admin"],
+    admin.router
+   
 )
 app.include_router(auth.router, prefix="/auth", tags=["Authentication"])
 app.include_router(

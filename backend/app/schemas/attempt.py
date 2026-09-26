@@ -31,7 +31,7 @@ class PracticeOptionResponse(BaseModel):
 class PracticeQuestionResponse(BaseModel):
     id: int
     topic_id: int
-    subtopic_id: int
+    subtopic_id: int | None= None
     question_text: str
     difficulty: int
     question_type: str

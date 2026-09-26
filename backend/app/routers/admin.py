@@ -58,7 +58,10 @@ from app.schemas.admin_billing import (
 )
 
 
-router = APIRouter()
+router = APIRouter(
+    prefix="/admin",
+    tags=["Admin"],
+)
 
 
 # =========================
@@ -816,24 +819,24 @@ async def create_question(
         )
     )
 
-    subtopic = result.scalar_one_or_none()
+    # subtopic = result.scalar_one_or_none()
 
-    if not subtopic:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Subtopic not found or inactive",
-        )
+    # if not subtopic:
+    #     raise HTTPException(
+    #         status_code=status.HTTP_404_NOT_FOUND,
+    #         detail="Subtopic not found or inactive",
+    #     )
 
     # -------------------------
     # Check Subtopic belongs
     # to selected Topic
     # -------------------------
 
-    if subtopic.topic_id != data.topic_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Subtopic does not belong to the selected topic",
-        )
+    # if subtopic.topic_id != data.topic_id:
+    #     raise HTTPException(
+    #         status_code=status.HTTP_400_BAD_REQUEST,
+    #         detail="Subtopic does not belong to the selected topic",
+    #     )
 
     # -------------------------
     # Validate Options
