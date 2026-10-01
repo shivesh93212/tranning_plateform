@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, String, Text
+from sqlalchemy import Boolean, DateTime, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.database import Base
@@ -30,6 +30,15 @@ class Company(Base):
 
     description: Mapped[str | None] = mapped_column(
         Text,
+        nullable=True,
+    )
+
+    year: Mapped[int | None] = mapped_column(
+        nullable=True,
+    )
+
+    source_type: Mapped[str | None] = mapped_column(
+        String(50),
         nullable=True,
     )
 

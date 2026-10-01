@@ -543,6 +543,8 @@ async def delete_subtopic(
 # CREATE COMPANY
 # =========================
 
+import re
+
 @router.post(
     "/companies",
     response_model=CompanyResponse,
@@ -555,7 +557,6 @@ async def create_company(
 ):
     require_admin(current_user)
 
-    # Check duplicate name
     result = await db.execute(
         select(Company).where(
             Company.name == data.name
@@ -570,10 +571,17 @@ async def create_company(
             detail="Company with this name already exists",
         )
 
-    # Check duplicate slug
+    # Generate slug from company name
+    slug = re.sub(
+        r"[^a-z0-9]+",
+        "-",
+        data.name.lower()
+    ).strip("-")
+
+    # Check slug already exists
     result = await db.execute(
         select(Company).where(
-            Company.slug == data.slug
+            Company.slug == slug
         )
     )
 
@@ -582,13 +590,14 @@ async def create_company(
     if existing_slug:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Company with this slug already exists",
+            detail="Company with this name/slug already exists",
         )
 
     company = Company(
         name=data.name,
-        slug=data.slug,
-        description=data.description,
+        slug=slug,
+        year=data.year,
+        source_type=data.source_type,
         is_active=True,
     )
 

@@ -1,5 +1,3 @@
-from datetime import datetime
-
 from pydantic import BaseModel, Field
 
 
@@ -9,12 +7,9 @@ class CompanyCreate(BaseModel):
         max_length=100,
     )
 
-    slug: str = Field(
-        min_length=2,
-        max_length=100,
-    )
+    year: int
 
-    description: str | None = None
+    source_type: str
 
 
 class CompanyUpdate(BaseModel):
@@ -24,13 +19,9 @@ class CompanyUpdate(BaseModel):
         max_length=100,
     )
 
-    slug: str | None = Field(
-        default=None,
-        min_length=2,
-        max_length=100,
-    )
+    year: int | None = None
 
-    description: str | None = None
+    source_type: str | None = None
 
     is_active: bool | None = None
 
@@ -38,11 +29,10 @@ class CompanyUpdate(BaseModel):
 class CompanyResponse(BaseModel):
     id: int
     name: str
-    slug: str
-    description: str | None
+    year: int | None = None
+    source_type: str | None = None
     is_active: bool
-    created_at: datetime
 
     model_config = {
-        "from_attributes": True
+        "from_attributes": True,
     }
