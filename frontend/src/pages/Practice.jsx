@@ -336,7 +336,7 @@ function Practice() {
   const explanationText =
     currentQuestion?.explanation ||
     result?.explanation ||
-    "Explanation is not available for this question.";
+    "";
 
   // --------------------------------
   // Option styling
