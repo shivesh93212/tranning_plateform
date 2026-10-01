@@ -28,16 +28,26 @@ class PracticeOptionResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
+
 class PracticeQuestionResponse(BaseModel):
     id: int
     topic_id: int
-    subtopic_id: int | None= None
+    subtopic_id: int | None = None
     question_text: str
     difficulty: int
     question_type: str
     source_type: str
     company_year: int | None
+
+    explanation: str | None = None
+    shortcut: str | None = None
+    solution_steps: str | None = None
+
     options: list[PracticeOptionResponse]
+
+    attempted: bool = False
+    attempt_order: int | None = None
+    is_correct: bool | None = None
 
     model_config = {"from_attributes": True}
 

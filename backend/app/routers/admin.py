@@ -741,10 +741,14 @@ async def update_company(
 # DEACTIVATE COMPANY
 # =========================
 
+# =========================
+# TOGGLE COMPANY STATUS
+# =========================
+
 @router.delete(
     "/companies/{company_id}",
 )
-async def delete_company(
+async def toggle_company_status(
     company_id: int,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -765,12 +769,20 @@ async def delete_company(
             detail="Company not found",
         )
 
-    company.is_active = False
+    # Toggle status
+    company.is_active = not company.is_active
 
     await db.commit()
+    await db.refresh(company)
 
     return {
-        "message": "Company deactivated successfully"
+        "message": (
+            "Company activated successfully"
+            if company.is_active
+            else "Company deactivated successfully"
+        ),
+        "id": company.id,
+        "is_active": company.is_active,
     }
 
 # =========================

@@ -431,11 +431,10 @@ async def get_practice_questions(
     )
 
     # -----------------------------------------------------
-    # DSA check
+    # Topic validation + DSA check
     # -----------------------------------------------------
 
     if topic_id is not None:
-
         result = await db.execute(
             select(Topic).where(
                 Topic.id == topic_id,
@@ -461,53 +460,88 @@ async def get_practice_questions(
             )
 
     # -----------------------------------------------------
-    # Get attempted questions
+    # Get user's attempt history
+    # -----------------------------------------------------
+
+    attempt_query = (
+        select(Attempt)
+        .join(
+            Question,
+            Attempt.question_id == Question.id,
+        )
+        .where(
+            Attempt.user_id == current_user.id,
+        )
+        .order_by(
+            Attempt.attempted_at.asc(),
+            Attempt.id.asc(),
+        )
+    )
+
+    if topic_id is not None:
+        attempt_query = attempt_query.where(
+            Question.topic_id == topic_id
+        )
+
+    if subtopic_id is not None:
+        attempt_query = attempt_query.where(
+            Question.subtopic_id == subtopic_id
+        )
+
+    if difficulty is not None:
+        attempt_query = attempt_query.where(
+            Question.difficulty == difficulty
+        )
+
+    if question_type is not None:
+        attempt_query = attempt_query.where(
+            Question.question_type == question_type
+        )
+
+    if source_type is not None:
+        attempt_query = attempt_query.where(
+            Question.source_type == source_type
+        )
+
+    if company_year is not None:
+        attempt_query = attempt_query.where(
+            Question.company_year == company_year
+        )
+
+    attempt_result = await db.execute(attempt_query)
+
+    attempts = attempt_result.scalars().all()
+
+    # -----------------------------------------------------
+    # Build attempt information
     # -----------------------------------------------------
 
     attempted_question_ids = set()
 
-    if topic_id is not None and not has_subscription:
+    # First attempt order
+    attempt_order_map = {}
 
-        result = await db.execute(
-            select(Attempt.question_id)
-            .join(
-                Question,
-                Attempt.question_id == Question.id,
-            )
-            .where(
-                Attempt.user_id == current_user.id,
-                Question.topic_id == topic_id,
-            )
-            .distinct()
-        )
+    # Latest attempt correctness
+    latest_correct_map = {}
 
-        attempted_question_ids = set(
-            result.scalars().all()
-        )
+    for attempt in attempts:
 
-        # -------------------------------------------------
-        # Free limit
-        # -------------------------------------------------
+        question_id = attempt.question_id
 
-        unique_attempted_count = len(
-            attempted_question_ids
-        )
-
-        remaining_free = 5 - unique_attempted_count
-
-        if remaining_free <= 0:
-            raise HTTPException(
-                status_code=403,
-                detail="Free limit reached. Please subscribe to continue.",
+        # First time this question was attempted
+        if question_id not in attempt_order_map:
+            attempt_order_map[question_id] = (
+                len(attempt_order_map) + 1
             )
 
-        limit = min(
-            limit,
-            remaining_free,
-        )
+        attempted_question_ids.add(question_id)
+
+        # Because attempts are ordered ASC,
+        # every new value here becomes the latest result.
+        latest_correct_map[question_id] = attempt.is_correct
 
     # -----------------------------------------------------
-    # Build query
+    # Build common question query
     # -----------------------------------------------------
 
     query = (
@@ -551,30 +585,133 @@ async def get_practice_questions(
         )
 
     # -----------------------------------------------------
-    # Free users only get new questions
+    # Get all matching questions
     # -----------------------------------------------------
 
-    if (
-        not has_subscription
-        and attempted_question_ids
-    ):
-        query = query.where(
-            ~Question.id.in_(
-                attempted_question_ids
-            )
-        )
-
-    query = (
-        query
-        .order_by(
+    result = await db.execute(
+        query.order_by(
             Question.id.desc()
         )
-        .limit(limit)
     )
 
-    result = await db.execute(query)
+    questions = result.scalars().all()
 
-    return result.scalars().all()
+    # -----------------------------------------------------
+    # Separate:
+    # 1. Unattempted
+    # 2. Attempted
+    # -----------------------------------------------------
+
+    unattempted_questions = []
+    attempted_questions = []
+
+    for question in questions:
+
+        if question.id in attempted_question_ids:
+            attempted_questions.append(question)
+        else:
+            unattempted_questions.append(question)
+
+    # -----------------------------------------------------
+    # Free user:
+    # Only 5 UNIQUE questions can be attempted.
+    #
+    # But already attempted questions remain visible.
+    # -----------------------------------------------------
+
+    if not has_subscription:
+
+        if topic_id is not None:
+            unique_attempted_count = len(
+                attempted_question_ids
+            )
+
+            remaining_free = max(
+                0,
+                5 - unique_attempted_count,
+            )
+
+        else:
+            # Keep free limit global when no topic
+            # filter is selected.
+            remaining_free = max(
+                0,
+                5 - len(attempted_question_ids),
+            )
+
+        # Only remaining new questions are allowed.
+        unattempted_questions = unattempted_questions[
+            :remaining_free
+        ]
+
+    # -----------------------------------------------------
+    # Ordering
+    #
+    # Unattempted -> first
+    # Attempted -> after them
+    # Attempted order = first solve order
+    # -----------------------------------------------------
+
+    attempted_questions.sort(
+        key=lambda question: attempt_order_map.get(
+            question.id,
+            999999,
+        )
+    )
+
+    final_questions = (
+        unattempted_questions
+        + attempted_questions
+    )
+
+    # -----------------------------------------------------
+    # Apply final limit
+    # -----------------------------------------------------
+
+    final_questions = final_questions[:limit]
+
+    # -----------------------------------------------------
+    # Build response
+    # -----------------------------------------------------
+
+    response = []
+
+    for question in final_questions:
+
+        attempted = question.id in attempted_question_ids
+
+        response.append(
+            {
+                "id": question.id,
+                "topic_id": question.topic_id,
+                "subtopic_id": question.subtopic_id,
+                "question_text": question.question_text,
+                "difficulty": question.difficulty,
+                "question_type": question.question_type,
+                "source_type": question.source_type,
+                "company_year": question.company_year,
+                "options": question.options,
+                "explanation": question.explanation,
+                "shortcut": question.shortcut,
+                "solution_steps": question.solution_steps,
+
+                "attempted": attempted,
+
+                "attempt_order": (
+                    attempt_order_map.get(question.id)
+                    if attempted
+                    else None
+                ),
+
+                "is_correct": (
+                    latest_correct_map.get(question.id)
+                    if attempted
+                    else None
+                ),
+            }
+        )
+
+    return response
 
 
 # =========================================================
